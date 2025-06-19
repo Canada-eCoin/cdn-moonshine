@@ -75,7 +75,9 @@
 		</dict>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>The camera is used to scan qrcodes in order to import or send Bitcoin.</string>
+	<string>The camera is used to scan QR codes in order to import or send Bitcoin.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Microphone permissions are required for proper camera functionality.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Enabling Face ID allows you quick and secure access to your account.</string>
 	<key>UIAppFonts</key>

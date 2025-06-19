@@ -11,7 +11,8 @@ import {
 	FlatList,
 	Keyboard
 } from 'react-native';
-import Animated, { Easing } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
+import { Easing } from "react-native";
 import PropTypes from "prop-types";
 import { systemWeights } from "react-native-typography";
 import DefaultModal from "./DefaultModal";
@@ -138,29 +139,29 @@ class Settings extends PureComponent {
 		super(props);
 		this.state = {
 			displaySettings: true,
-			settingsOpacity: new Animated.Value(1),
+			settingsOpacity: new RNAnimated.Value(1),
 
 			displayPin: false,
-			pinOpacity: new Animated.Value(0),
+			pinOpacity: new RNAnimated.Value(0),
 
 			displayBackupPhrase: false,
-			backupPhraseOpacity: new Animated.Value(0),
+			backupPhraseOpacity: new RNAnimated.Value(0),
 			backupPhrase: "",
 
 			displayImportPhrase: false,
-			importPhraseOpacity: new Animated.Value(0),
+			importPhraseOpacity: new RNAnimated.Value(0),
 
 			displayBroadcastTransaction: false,
-			broadcastTransactionOpacity: new Animated.Value(0),
+			broadcastTransactionOpacity: new RNAnimated.Value(0),
 
 			displaySignMessage: false,
-			signMessageOpacity: new Animated.Value(0),
+			signMessageOpacity: new RNAnimated.Value(0),
 
 			displayVerifyMessage: false,
-			verifyMessageOpacity: new Animated.Value(0),
+			verifyMessageOpacity: new RNAnimated.Value(0),
 
 			displayElectrumOptions: false,
-			electrumOptionsOpacity: new Animated.Value(0),
+			electrumOptionsOpacity: new RNAnimated.Value(0),
 
 			rescanningWallet: false,
 			connectingToElectrum: false,
@@ -200,8 +201,13 @@ class Settings extends PureComponent {
 		} catch (e) {}
 	}
 
-	componentDidUpdate() {
-		if (Platform.OS === "ios") LayoutAnimation.easeInEaseOut();
+	componentDidUpdate(prevProps, prevState) {
+		// Safely apply layout animations with a slight delay to avoid conflicts with React 19's rendering
+		if (Platform.OS === "ios") {
+			setTimeout(() => {
+				LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+			}, 0);
+		}
 	}
 
 	_displayOption({ value = "", key = "", currentValue = "", onPress = () => null, optionsLength = 1 } = {}) {
@@ -902,7 +908,7 @@ class Settings extends PureComponent {
 		return (
 			<View style={[styles.container, { backgroundColor } ]}>
 
-				<Animated.View style={{ flex: 1, opacity: this.state.settingsOpacity }}>
+				<RNAnimated.View style={{ flex: 1, opacity: this.state.settingsOpacity }}>
 					<ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps={"handled"} contentContainerStyle={{flexGrow:1}} style={{ flex: 1, paddingTop: 20 }}>
 						<TouchableOpacity activeOpacity={1} onPress={Keyboard.dismiss} style={styles.container}>
 
@@ -1138,32 +1144,32 @@ class Settings extends PureComponent {
 						</TouchableOpacity>
 
 					</ScrollView>
-				</Animated.View>
+				</RNAnimated.View>
 
 				{this.state.displayPin &&
-					<Animated.View style={[styles.settingContainer, { opacity: this.state.pinOpacity }]}>
+					<RNAnimated.View style={[styles.settingContainer, { opacity: this.state.pinOpacity }]}>
 						<PinPad onSuccess={this.onPinSuccess} pinSetup={true} updateSettings={this.props.updateSettings} />
-					</Animated.View>
+					</RNAnimated.View>
 				}
 
 				{this.state.displayBackupPhrase &&
-				<Animated.View style={[styles.settingContainer, { opacity: this.state.backupPhraseOpacity }]}>
+				<RNAnimated.View style={[styles.settingContainer, { opacity: this.state.backupPhraseOpacity }]}>
 					<Text style={[styles.headerText, { position: "absolute", top: 20, left: 0, right: 0 }]}>{this.getWalletName()}</Text>
 					<BackupPhrase
 						phrase={this.getBackupPhrase()}
 						onPress={() => this.toggleBackupPhrase({ selectedWallet, display: false })}
 					/>
-				</Animated.View>
+				</RNAnimated.View>
 				}
 
 				{this.state.displayImportPhrase &&
-				<Animated.View style={[styles.settingContainer, { opacity: this.state.importPhraseOpacity, zIndex: 500 }]}>
+				<RNAnimated.View style={[styles.settingContainer, { opacity: this.state.importPhraseOpacity, zIndex: 500 }]}>
 					<ImportPhrase onBack={this.onBack} createNewWallet={this.props.createNewWallet} />
-				</Animated.View>
+				</RNAnimated.View>
 				}
 
 				{this.state.displayBroadcastTransaction &&
-				<Animated.View style={[styles.settingContainer, { opacity: this.state.broadcastTransactionOpacity, zIndex: 500 }]}>
+				<RNAnimated.View style={[styles.settingContainer, { opacity: this.state.broadcastTransactionOpacity, zIndex: 500 }]}>
 					<BroadcastTransaction
 						onBack={this.onBack}
 						selectedCrypto={this.props.wallet.selectedCrypto}
@@ -1171,11 +1177,11 @@ class Settings extends PureComponent {
 						broadcastTransaction={this.props.sendTransaction}
 						refreshWallet={this.props.refreshWallet}
 					/>
-				</Animated.View>
+				</RNAnimated.View>
 				}
 
 				{this.state.displaySignMessage &&
-				<Animated.View style={[styles.settingContainer, { opacity: this.state.signMessageOpacity, zIndex: 500 }]}>
+				<RNAnimated.View style={[styles.settingContainer, { opacity: this.state.signMessageOpacity, zIndex: 500 }]}>
 					<SignMessage
 						signMessageData={this.getSignMessageData()}
 						selectedCrypto={selectedCrypto}
@@ -1186,30 +1192,30 @@ class Settings extends PureComponent {
 						addresses={this.props.wallet.wallets[selectedWallet].addresses[selectedCrypto]}
 						updateSettings={this.props.updateSettings}
 					/>
-				</Animated.View>
+				</RNAnimated.View>
 				}
 
 				{this.state.displayVerifyMessage &&
-				<Animated.View style={[styles.settingContainer, { opacity: this.state.verifyMessageOpacity, zIndex: 500 }]}>
+				<RNAnimated.View style={[styles.settingContainer, { opacity: this.state.verifyMessageOpacity, zIndex: 500 }]}>
 					<VerifyMessage
 						verifyMessageData={this.getVerifyMessageData()}
 						selectedCrypto={selectedCrypto}
 						onBack={this.onBack}
 						updateSettings={this.props.updateSettings}
 					/>
-				</Animated.View>
+				</RNAnimated.View>
 				}
 
 				{this.state.displayElectrumOptions &&
-				<Animated.View style={[styles.settingContainer, { opacity: this.state.electrumOptionsOpacity, zIndex: 500 }]}>
+				<RNAnimated.View style={[styles.settingContainer, { opacity: this.state.electrumOptionsOpacity, zIndex: 500 }]}>
 					<ElectrumOptions onBack={this.onBack} />
-				</Animated.View>
+				</RNAnimated.View>
 				}
 
 				{!this.state.displayImportPhrase &&
-				<Animated.View style={styles.xButton}>
+				<RNAnimated.View style={styles.xButton}>
 					<XButton style={{ borderColor: "transparent", zIndex: 1000 }} onPress={this.onBack} />
-				</Animated.View>}
+				</RNAnimated.View>}
 
 				<DefaultModal
 					isVisible={this.state.displayGeneralHelp}

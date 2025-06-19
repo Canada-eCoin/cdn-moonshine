@@ -12,45 +12,52 @@ import React from "react";
 import App from "./src/components/App";
 
 // the local storage we'll be using to persist data
-import AsyncStorage from "@react-native-community/async-storage";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+// We'll import the store initializer but NOT the whole module to avoid circular dependency
+import { initializeWithStore } from "./src/utils/ecoincore";
 
 // redux boilerplate
-import { createStore, applyMiddleware } from "redux";
-
-// the component we'll use to wrap our component tree
+import { legacy_createStore as createStore, applyMiddleware, compose } from "redux";
 import { PersistGate } from "redux-persist/integration/react";
-
-// root reducer - ./src/reducers/index.js
 import reducer from "./src/reducers";
-
-import thunk from "redux-thunk";
+import { thunk } from "redux-thunk";
 import { createLogger } from "redux-logger";
 import LinearGradient from "react-native-linear-gradient";
+import { Provider } from "react-redux";
+import { persistStore, persistReducer } from "redux-persist";
 
-const middleware = [ thunk ];
-const logger = createLogger({collapsed: true});
+// Setup middleware
+const middlewares = [];
+middlewares.push(thunk);
 
-if(process.env.ENVIRONMENT !== "production") middleware.push(logger);
-
-// redux boilerplate
-const Provider = require("react-redux").Provider;
-
-// redux-persist wrappers
-const { persistStore, persistReducer } = require("redux-persist");
-
-const createStoreWithMiddleware = applyMiddleware(...middleware)(createStore);
+if (process.env.ENVIRONMENT !== "production") {
+    const logger = createLogger({collapsed: true});
+    middlewares.push(logger);
+}
 
 // persist config
 const persistConfig = {
-	key: 'root',
-	storage: AsyncStorage,
+    key: 'root',
+    storage: AsyncStorage,
 };
 
-// wrap persist API around root reducer and store
+// wrap persist API around root reducer
 const persistedReducer = persistReducer(persistConfig, reducer);
 
-export const store = createStoreWithMiddleware(persistedReducer);
+// create store with middleware
+export const store = createStore(
+    persistedReducer,
+    compose(applyMiddleware(...middlewares))
+);
+
+// Make store available globally to break require cycles
+global.reduxStore = store;
+
 const persistor = persistStore(store);
+
+// Initialize ecoincore with the store AFTER it's fully created
+initializeWithStore(store);
 
 // Root component
 const Root = () => {
