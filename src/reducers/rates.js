@@ -6,7 +6,7 @@ module.exports = (state = {}, action) => {
 	if (action.type === actions.EXCHANGE_RATES_UPDATED) {
 		return {
 			...state,
-			[action.payload.call]: {...state[action.payload.call], ...action.payload}
+			[action.payload.ticker]: {...state[action.payload.ticker], ...action.payload}
 		};
 	} else return state;
 }
