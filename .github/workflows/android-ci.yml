@@ -2,9 +2,9 @@ name: Android Debug APK CI
 
 on:
   push:
-    branches: [ci/github-actions-apk]
+    branches: [master]
   pull_request:
-    branches: [ci/github-actions-apk]
+    branches: [master]
 
 jobs:
   build-android:
