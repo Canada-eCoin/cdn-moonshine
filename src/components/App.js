@@ -2403,6 +2403,7 @@ const styles = StyleSheet.create({
 	    height: '100%'
 	},
 	container: {
+	  paddingTop: 24,
 		flex: 1,
 	},
 	linearGradient: {
