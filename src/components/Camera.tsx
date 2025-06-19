@@ -1,11 +1,17 @@
-import React, {memo, useState} from "react";
+import React, {memo, useState, useRef, useEffect} from "react";
 import {
 	StyleSheet,
 	View,
-	Text
+	Text,
+	Platform
 } from "react-native";
 import PropTypes from "prop-types";
-import { RNCamera } from 'react-native-camera';
+import {
+  Camera as VisionCamera,
+  useCameraDevice,
+  useCameraPermission,
+  useCodeScanner
+} from 'react-native-vision-camera';
 import { systemWeights } from "react-native-typography";
 import EvilIcon from "react-native-vector-icons/EvilIcons";
 import XButton from "./XButton";
@@ -22,41 +28,60 @@ interface CameraComponent {
 }
 const _Camera = ({ onBarCodeRead = () => null, onClose = () => null }: CameraComponent) => {
 	const [_data, setData] = useState("");
-	const notAuthorizedView = (
-		<View style={styles.notAuthorizedView}>
-			<EvilIcon name={"exclamation"} size={60} />
-			<Text style={[styles.boldText, { marginVertical: 10 }]}>It appears I do not have permission to access your camera.</Text>
-			<Text style={styles.text}>To utilize this feature in the future you will need to enable camera permissions for this app from your phones settings.</Text>
-		</View>
-	);
+	const camera = useRef(null);
+	const { hasPermission, requestPermission } = useCameraPermission();
+	const device = useCameraDevice('back');
+
+	useEffect(() => {
+		// Request camera permission if it hasn't been granted
+		if (!hasPermission) {
+			requestPermission();
+		}
+	}, [hasPermission, requestPermission]);
+
+	const codeScanner = useCodeScanner({
+		codeTypes: ['qr', 'ean-13', 'code-128'],
+		onCodeScanned: (codes) => {
+			if (codes.length > 0 && _data !== codes[0].value) {
+				setData(codes[0].value);
+				onBarCodeRead(codes[0].value);
+			}
+		}
+	});
+
+	if (!hasPermission) {
+		return (
+			<View style={styles.notAuthorizedView}>
+				<EvilIcon name={"exclamation"} size={60} />
+				<Text style={[styles.boldText, { marginVertical: 10 }]}>It appears I do not have permission to access your camera.</Text>
+				<Text style={styles.text}>To utilize this feature in the future you will need to enable camera permissions for this app from your phones settings.</Text>
+			</View>
+		);
+	}
+
+	if (!device) {
+		return (
+			<View style={styles.notAuthorizedView}>
+				<EvilIcon name={"exclamation"} size={60} />
+				<Text style={[styles.boldText, { marginVertical: 10 }]}>No camera device is available</Text>
+				<Text style={styles.text}>Please check your device and try again.</Text>
+			</View>
+		);
+	}
 
 	return (
 		<View style={styles.container}>
-			<RNCamera
-				captureAudio={false}
-				ref={ref => {
-					// @ts-ignore
-					this.camera = ref;
-				}}
+			<VisionCamera
+				ref={camera}
 				style={styles.container}
-				onBarCodeRead={({ data }) => {
-					if (_data !== data) {
-						setData(data);
-						onBarCodeRead(data);
-					}
-				}}
-				onMountError={() => {
+				device={device}
+				isActive={true}
+				codeScanner={codeScanner}
+				video={false}
+				audio={false}
+				onError={() => {
 					alert("There was an error encountered when loading the camera. Please ensure the app has permission to use this feature in your phone settings.");
 					onClose();
-				}}
-				notAuthorizedView={notAuthorizedView}
-				type={RNCamera.Constants.Type.back}
-				flashMode={RNCamera.Constants.FlashMode.on}
-				androidCameraPermissionOptions={{
-					title: "Permission to use camera",
-					message: "We need your permission to use your camera",
-					buttonPositive: "Okay",
-					buttonNegative: "Cancel",
 				}}
 			/>
 			<View style={styles.xButton}>

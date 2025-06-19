@@ -27,7 +27,8 @@ import { themes } from "../styles/themes";
 
 import RNBootSplash from "react-native-bootsplash";
 import { systemWeights } from "react-native-typography";
-import Ionicons from "react-native-vector-icons/Ionicons";
+import { MaterialIcons } from "../styles/components";
+
 import TouchID from "react-native-touch-id";
 import "../../shim";
 
@@ -2083,7 +2084,9 @@ export default class App extends Component {
 												}}
 												onPress={this.onSettingsPress}
 											>
-												<Ionicons name={"ios-cog"} size={32} color={this.getTheme().text} />
+												<MaterialIcons name="settings" size={32} />
+
+
 											</TouchableOpacity>
 										</Animated.View>}
 
@@ -2400,6 +2403,7 @@ const styles = StyleSheet.create({
 	    height: '100%'
 	},
 	container: {
+	  paddingTop: 24,
 		flex: 1,
 	},
 	linearGradient: {

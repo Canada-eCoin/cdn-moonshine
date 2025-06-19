@@ -1,8 +1,11 @@
 import "../../../shim";
 
-const ElectrumClient = require("electrum-client");
+const ElectrumClient = require("./client");
 const bitcoin = require("bitcoinjs-lib");
 const clients = require("./clients");
+const net = require("net");
+const tls = require("tls");
+
 const {
 	networks
 } = require("../networks");
@@ -108,7 +111,7 @@ const connectToPeer = ({ port = 50002, host = "", protocol = "ssl", coin = "bitc
 				}
 			}
 			if (needToConnect) {
-				clients.mainClient[coin] = new ElectrumClient(port, host, protocol);
+				clients.mainClient[coin] = new ElectrumClient(net, tls, port, host, protocol);
 				connectionResponse = await promiseTimeout(1000, clients.mainClient[coin].connect());
 				if (!connectionResponse.error) {
 					try {
@@ -227,7 +230,11 @@ const subscribeHeader = async ({ id = "subscribeHeader", coin = "", onReceive = 
 	try {
 		if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
 		clients.mainClient[coin].subscribe.on('blockchain.headers.subscribe', onReceive);
-		if (__DEV__) console.log("Subscribed to headers.");
+
+		const header = await clients.mainClient[coin].blockchainHeaders_subscribe();
+		if (__DEV__) console.log("Subscribed to headers at", header.height);
+		onReceive(header);
+
 		return { id, error: false, method: "subscribeHeader", data: "Subscribed", coin };
 	} catch (e) {
 		return { id, error: true, method: "subscribeHeader", data: e, coin };

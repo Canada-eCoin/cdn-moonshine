@@ -11,7 +11,7 @@ import PropTypes from "prop-types";
 import {systemWeights} from "react-native-typography";
 import Button from "./Button";
 import {Text, View, CopiedLinearGradient} from "../styles/components";
-import Clipboard from "@react-native-community/clipboard";
+import Clipboard from "@react-native-clipboard/clipboard";
 
 const {
   width: SCREEN_WIDTH,

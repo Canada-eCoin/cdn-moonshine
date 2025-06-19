@@ -4,7 +4,7 @@ import {
 	TouchableOpacity
 } from "react-native";
 import PropTypes from "prop-types";
-import { View, Text, EvilIcon, Ionicons, ActivityIndicator } from "../styles/components";
+import { View, Text, EvilIcon, MaterialIcons, ActivityIndicator } from "../styles/components";
 import {systemWeights} from "react-native-typography";
 
 const {
@@ -37,7 +37,8 @@ const _TransactionListHeader = (
 			<View style={styles.transactionListHeader}>
 				{!loadingTransactions &&
 				<TouchableOpacity onPress={refreshWallet} style={styles.refresh}>
-					<Ionicons type="text" name={"ios-refresh"} size={18} color={theme.white} />
+				<MaterialIcons name="refresh" size={18} />
+
 				</TouchableOpacity>}
 				{loadingTransactions && displayTransactionList &&
 				<View style={styles.refresh}>
