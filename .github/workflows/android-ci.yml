@@ -61,11 +61,11 @@ jobs:
 
       - name: Rename APK with build date
         run: |
-          mv android/app/build/outputs/apk/debug/app-debug.apk android/app/build/outputs/apk/debug/app-debug-$BUILD_DATE.apk
+          mv android/app/build/outputs/apk/debug/app-debug.apk android/app/build/outputs/apk/debug/app-debug-${{ env.BUILD_DATE }}.apk
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug-$BUILD_DATE
-          path: android/app/build/outputs/apk/debug/app-debug-$BUILD_DATE.apk
+          name: app-debug-${{ env.BUILD_DATE }}
+          path: android/app/build/outputs/apk/debug/app-debug-${{ env.BUILD_DATE }}.apk
 
