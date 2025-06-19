@@ -4,7 +4,7 @@ import {
 	PixelRatio,
 	Vibration
 } from "react-native";
-import AsyncStorage from "@react-native-community/async-storage";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import * as Keychain from "react-native-keychain"; // https://github.com/oblador/react-native-keychain
 import "../../shim";
@@ -545,7 +545,7 @@ const getCoinNetwork = (coin = "") => {
 	return networks[coin];
 };
 
-const generateAddresses = async ({ addressAmount = 0, changeAddressAmount = 0, wallet = "wallet0", addressIndex = 0, changeAddressIndex = 0, selectedCrypto = "bitcoin", keyDerivationPath = "84", addressType = "bech32" } = {}) => {
+const generateAddresses = async ({ addressAmount = 0, changeAddressAmount = 0, wallet = "wallet0", addressIndex = 0, changeAddressIndex = 0, selectedCrypto = "bitcoin", keyDerivationPath = "44", addressType = "legacy" } = {}) => {
 	return new Promise(async (resolve) => {
 		const failure = (data) => {
 			resolve({error: true, data});
@@ -566,8 +566,14 @@ const generateAddresses = async ({ addressAmount = 0, changeAddressAmount = 0, w
 			} catch (e) {}
 
 			const mnemonic = keychainResult.data.password;
+			console.log({mnemonic});
+
 			const seed = bip39.mnemonicToSeedSync(mnemonic, bip39Passphrase);
+			console.log({seed});
+			
 			const root = bip32.fromSeed(seed, network);
+			console.log({root});
+
 			let addresses = [];
 			let changeAddresses = [];
 
@@ -577,7 +583,25 @@ const generateAddresses = async ({ addressAmount = 0, changeAddressAmount = 0, w
 			await Promise.all(
 				addressArray.map(async (item, i) => {
 					try {
-						const addressPath = `m/${keyDerivationPath}'/${coinTypePath}'/0'/0/${i + addressIndex}`;
+						// Log path construction for debugging
+						console.log("BIP39 DEBUG: Path construction parameters:", {
+							keyDerivationPath,
+							coinTypePath,
+							addressIndex,
+							paramTypes: {
+								keyDerivationPathType: typeof keyDerivationPath,
+								coinTypePathType: typeof coinTypePath,
+								addressIndexType: typeof addressIndex
+							}
+						});
+						
+						// Ensure we have valid string values
+						const safeKeyPath = (keyDerivationPath !== undefined && keyDerivationPath !== null) ? keyDerivationPath : "44";
+						const safeCoinPath = (coinTypePath !== undefined && coinTypePath !== null) ? coinTypePath : "0";
+						const safeAddressIndex = (isNaN(i + addressIndex)) ? i : i + addressIndex;
+						
+						const addressPath = `m/${safeKeyPath}'/${safeCoinPath}'/0'/0/${safeAddressIndex}`;
+						console.log("BIP39 DEBUG: Constructed address path:", addressPath);
 						const addressKeypair = root.derivePath(addressPath);
 						const address = await getAddress(addressKeypair, network, addressType);
 						const scriptHash = getScriptHash(address, network);
@@ -587,7 +611,25 @@ const generateAddresses = async ({ addressAmount = 0, changeAddressAmount = 0, w
 				}),
 				changeAddressArray.map(async (item, i) => {
 					try {
-						const changeAddressPath = `m/${keyDerivationPath}'/${coinTypePath}'/0'/1/${i + changeAddressIndex}`;
+						// Log path construction for debugging change addresses
+						console.log("BIP39 DEBUG: Change path construction parameters:", {
+							keyDerivationPath,
+							coinTypePath,
+							changeAddressIndex,
+							paramTypes: {
+								keyDerivationPathType: typeof keyDerivationPath,
+								coinTypePathType: typeof coinTypePath,
+								changeAddressIndexType: typeof changeAddressIndex
+							}
+						});
+						
+						// Ensure we have valid string values for change addresses
+						const safeKeyPath = (keyDerivationPath !== undefined && keyDerivationPath !== null) ? keyDerivationPath : "44";
+						const safeCoinPath = (coinTypePath !== undefined && coinTypePath !== null) ? coinTypePath : "0";
+						const safeChangeAddressIndex = (isNaN(i + changeAddressIndex)) ? i : i + changeAddressIndex;
+						
+						const changeAddressPath = `m/${safeKeyPath}'/${safeCoinPath}'/0'/1/${safeChangeAddressIndex}`;
+						console.log("BIP39 DEBUG: Constructed change address path:", changeAddressPath);
 						const changeAddressKeypair = root.derivePath(changeAddressPath);
 						const address = await getAddress(changeAddressKeypair, network, addressType);
 						const scriptHash = getScriptHash(address, network);
@@ -604,7 +646,7 @@ const generateAddresses = async ({ addressAmount = 0, changeAddressAmount = 0, w
 	});
 };
 
-const getAddress = (keyPair, network, type = "bech32") => {
+const getAddress = (keyPair, network, type = "legacy") => {
 	try {
 		if (typeof network === "string" && network in networks) network = networks[network];
 		switch (type) {
@@ -671,7 +713,7 @@ const openUrl = (url = "") => {
 	}
 };
 
-const openTxId = (txid = "", selectedCrypto = ""): void => {
+const openTxId = (txid = "", selectedCrypto = "") => {
 	if (!txid || !selectedCrypto) return;
 	let url = "";
 	if (selectedCrypto === "bitcoin") url = `https://blockstream.info/tx/${txid}`;
@@ -751,12 +793,20 @@ const getInfoFromAddressPath = async (path = "") => {
 //Solution located here: https://stackoverflow.com/questions/3753483/javascript-thousand-separator-string-format/19840881
 //This inserts commas appropriately in a number and does not insert commas after a decimal.
 const formatNumber = (num) => {
-	const n = String(num),
-		p = n.indexOf('.');
-	return n.replace(
-		/\d(?=(?:\d{3})+(?:\.|$))/g,
-		(m, i) => p < 0 || i < p ? `${m},` : m
-	);
+	// if(Number(num) < 1 ) num = Number(num).toFixed(4)
+	// if(Number(num) > 1 ) num = Number(num).toFixed(3)
+	// if(Number(num) > 10 ) num = Number(num).toFixed(2)
+	// if(Number(num) > 100 ) num = Number(num).toFixed(1)
+	// if(Number(num) > 1000 ) num = Number(num).toFixed(0)
+	const n = String(num);
+	const p = n.indexOf('.');
+	return n.replace( /\d(?=(?:\d{3})+(?:\.|$))/g, (m, i) => p < 0 || i < p ? `${m},` : m );
+};
+
+const formatSatoshis = (num) => {
+	const n = String(num);
+	const p = n.indexOf('.');
+	return n.replace( /\d(?=(?:\d{3})+(?:\.|$))/g, (m, i) => p < 0 || i < p ? `${m},` : m );
 };
 
 const removeDecimals = (str) => {
@@ -817,7 +867,7 @@ const decodeOpReturnMessage = (opReturn = "") => {
 	}
 };
 
-const signMessage = async ({ message = "", addressType = "bech32", path = "m/84'/0'/0'/0/0", selectedWallet = "wallet0", selectedCrypto = "bitcoin" } = {}) => {
+const signMessage = async ({ message = "", addressType = "legacy", path = "m/44'/0'/0'/0/0", selectedWallet = "wallet0", selectedCrypto = "bitcoin" } = {}) => {
 	try {
 		if (message === "") return { error: true, data: "No message to sign." };
 		const network = networks[selectedCrypto];
