@@ -133,11 +133,13 @@ jobs:
 
       - name: Build simulator app
         if: inputs.artifacts != 'device-unsigned-only'
-        env:
-          # A stable path, not $RUNNER_TEMP: this is what gets cached above.
-          DD: $HOME/dd
         run: |
           set -euo pipefail
+          # $HOME must be expanded by the SHELL. An `env: DD: $HOME/dd` block does not
+          # expand it — GitHub passes the literal string through — which produced
+          # `<cwd>/$HOME/dd` and a ModuleCache path mismatch. A stable path is required
+          # because this directory is what the DerivedData cache stores.
+          DD="$HOME/dd"
           # Diagnostics: if a build fails on C++ headers (the first iOS run failed on
           # '<memory> file not found'), these lines say why without needing a 40-minute
           # rebuild. Teed to stdout as well as the summary so they are readable from
@@ -166,12 +168,11 @@ jobs:
 
       - name: Build unsigned device archive
         if: inputs.artifacts != 'simulator-only'
-        env:
-          # Same DerivedData as the simulator build, so the two share the cached
-          # intermediates and the device compile is incremental.
-          DD: $HOME/dd
         run: |
           set -euo pipefail
+          # Same DerivedData as the simulator build, so the two share the cached
+          # intermediates and the device compile is incremental.
+          DD="$HOME/dd"
           xcodebuild \
             -workspace ios/moonshine.xcworkspace \
             -scheme "$SCHEME" \
