@@ -88,9 +88,43 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
-      # No Podfile.lock is committed (the one in the tree pinned React 0.63.3, five
-      # majors behind). This resolves fresh and the generated lock is uploaded as an
-      # artifact so it can be committed again.
+      # Caches are scoped so that a run can only restore caches written on its own
+      # branch or on the default branch, and an entry is immutable once written for a
+      # given key. So nothing a feature branch writes can ever be consumed by master —
+      # poisoning a cache master reads requires the ability to write to master, which
+      # already means pushing code. Nothing sensitive may be cached (caches are readable
+      # by anyone with repo read access); these two hold dependencies and compile
+      # output, no key material.
+      #
+      # Keys are deliberately STABLE (no run id) rather than refreshed per run: a
+      # DerivedData cache is measured in gigabytes, and a per-run key would add another
+      # multi-GB entry every run until LRU eviction started evicting the Gradle caches.
+      # One entry per Podfile.lock is the right granularity — pods are what take the
+      # time, and they only change when the lock does. Xcode recompiles whatever moved.
+      - name: Restore CocoaPods download cache
+        uses: actions/cache@v6
+        with:
+          path: ~/Library/Caches/CocoaPods
+          key: cocoapods-${{ runner.os }}-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: |
+            cocoapods-${{ runner.os }}-
+
+      - name: Restore DerivedData cache
+        uses: actions/cache@v6
+        with:
+          # Intermediates only: that is where the ~45 minutes of compiling 230 pods
+          # ends up. Build/Products (linked .app bundles and dSYMs) is regenerated
+          # cheaply and is what would blow the repo's 10 GB cache budget.
+          path: ~/dd/Build/Intermediates.noindex
+          key: ios-intermediates-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: |
+            ios-intermediates-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-
+
+      # ios/Podfile.lock is committed, so this install is pinned. It is NOT run with
+      # --deployment yet, which means CocoaPods will quietly update the lock if a podspec
+      # moves underneath it. Making that a hard gate — the equivalent of
+      # `yarn install --frozen-lockfile` — needs its own validation run; noted in the
+      # brief rather than assumed here.
       - name: Install CocoaPods
         working-directory: ios
         env:
@@ -100,7 +134,8 @@ jobs:
       - name: Build simulator app
         if: inputs.artifacts != 'device-unsigned-only'
         env:
-          DD: ${{ runner.temp }}/dd
+          # A stable path, not $RUNNER_TEMP: this is what gets cached above.
+          DD: $HOME/dd
         run: |
           set -euo pipefail
           # Diagnostics: if a build fails on C++ headers (the first iOS run failed on
@@ -131,6 +166,10 @@ jobs:
 
       - name: Build unsigned device archive
         if: inputs.artifacts != 'simulator-only'
+        env:
+          # Same DerivedData as the simulator build, so the two share the cached
+          # intermediates and the device compile is incremental.
+          DD: $HOME/dd
         run: |
           set -euo pipefail
           xcodebuild \
@@ -157,9 +196,14 @@ jobs:
           OUT="$RUNNER_TEMP/out"
           mkdir -p "$OUT"
           BASE="moonshine-${BUILD_DATE}-${SHORT_SHA}"
+          DD="$HOME/dd"
 
-          APP="$RUNNER_TEMP/dd/Build/Products/${XCODE_CONFIGURATION}-iphonesimulator/moonshine.app"
-          if [ -d "$APP" ]; then
+          # Matched by glob, not by name: the product is built as `Moonshine.app` even
+          # though the target is `moonshine`, and this step runs on a case-insensitive
+          # volume, so a name mismatch used to pass by luck.
+          APP="$(find "$DD/Build/Products/${XCODE_CONFIGURATION}-iphonesimulator" \
+                   -maxdepth 1 -name '*.app' -print -quit 2>/dev/null || true)"
+          if [ -n "$APP" ] && [ -d "$APP" ]; then
             ditto -c -k --sequesterRsrc --keepParent "$APP" "$OUT/${BASE}-simulator.app.zip"
           fi
 
@@ -168,10 +212,21 @@ jobs:
               "$RUNNER_TEMP/moonshine.xcarchive" "$OUT/${BASE}-unsigned.xcarchive.zip"
           fi
 
-          if [ ! -d "$APP" ] && [ ! -d "$RUNNER_TEMP/moonshine.xcarchive" ]; then
+          if ! ls "$OUT"/*.zip >/dev/null 2>&1; then
             echo "::error::Neither artifact was produced — see the xcodebuild output above."
             exit 1
           fi
+
+          # Report what the caches actually weigh, so the repo's 10 GB budget is
+          # observable rather than assumed.
+          {
+            echo "### Cache sizes on the runner"
+            echo
+            echo '```'
+            du -sh "$HOME/dd/Build/Intermediates.noindex" 2>/dev/null || echo "no DerivedData"
+            du -sh "$HOME/Library/Caches/CocoaPods" 2>/dev/null || echo "no CocoaPods cache"
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
           cp ios/Podfile.lock "$OUT/Podfile.lock" 2>/dev/null || true
           ( cd "$OUT" && shasum -a 256 ./* > SHA256SUMS )
