@@ -98,9 +98,22 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // Deliberately NOT signed.
+            //
+            // This used to be `signingConfig signingConfigs.debug`, which produced an
+            // `app-release.apk` carrying the *public* Android debug key. Every store
+            // rejects that, and anyone who wanted to publish had to strip the signature
+            // first. `assembleRelease` now emits `app-release-unsigned.apk`, which can be
+            // signed directly with whatever key the person publishing controls.
+            //
+            // Gradle can sign it without any file ever entering this repo:
+            //   ./gradlew assembleRelease \
+            //     -Pandroid.injected.signing.store.file=/path/to/your.jks \
+            //     -Pandroid.injected.signing.store.password=... \
+            //     -Pandroid.injected.signing.key.alias=... \
+            //     -Pandroid.injected.signing.key.password=...
+            //
+            // See docs/SIGNING.md. No key material is held by GitHub.
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }

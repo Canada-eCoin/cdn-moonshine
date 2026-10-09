@@ -104,7 +104,7 @@ export const XButton = styled.View`
   border-width: ${props => props.theme.mode === "light" ? "1.5px" : "1.5px"};
 `;
 
-export const QRCode = styled(_QRCode).attrs((props) => ({
+export const QRCode = styled(_QRCode).attrs(() => ({
   color: "#000"
 }))`
 `;

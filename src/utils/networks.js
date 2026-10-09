@@ -201,6 +201,7 @@ const getCoinData = ({ selectedCrypto = "canadaecoin", cryptoUnit = "CDN" }) => 
 		let satoshi = "bit";
 		let oshi = "bits";
 		let blockTime = 5; //min
+		let color;
 		switch (selectedCrypto) {
 			case "bitcoin":
 				satoshi = "satoshi";

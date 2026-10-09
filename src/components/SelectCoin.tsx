@@ -10,12 +10,6 @@ import PropTypes from "prop-types";
 import WalletCarousel from "./WalletCarousel";
 import EvilIcon from "react-native-vector-icons/EvilIcons";
 
-const {
-	Constants: {
-		colors
-	}
-} = require("../../ProjectData.json");
-
 interface SelectCoinComponent {
 	wallet: { wallets: {}, selectedWallet: string, walletOrder: string[] },
 	createNewWallet: Function,
@@ -27,7 +21,9 @@ interface SelectCoinComponent {
 }
 const _SelectCoin = ({ theme = {}, wallet = { wallets: {}, selectedWallet: "wallet0", walletOrder: [] }, createNewWallet = () => null, onCoinPress = () => null, cryptoUnit = "satoshi", settings = {}, rates = {}, updateWallet = () => null, deleteWallet = () => null, displayTestnet = true }: SelectCoinComponent) => {
 	
-	if (Platform.OS === "ios") useEffect(() => LayoutAnimation.easeInEaseOut());
+	useEffect(() => {
+		if (Platform.OS === "ios") LayoutAnimation.easeInEaseOut();
+	});
 	
 	const walletsLen = Object.keys(wallet.wallets).length;
 	return (

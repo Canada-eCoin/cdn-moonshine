@@ -10,7 +10,7 @@ import bitcoinUnits from "bitcoin-units";
 import Button from "./Button";
 import DefaultModal from "./DefaultModal";
 import Loading from "./Loading";
-import { View, Text, ScrollView, EvilIcon, TextInput } from "../styles/components";
+import { View, Text, ScrollView, EvilIcon } from "../styles/components";
 
 const {
 	Constants: {
@@ -223,7 +223,6 @@ class TransactionDetail extends PureComponent {
 		try {
 			const cryptoUnit = this.props.settings.cryptoUnit;
 			const selectedCrypto = this.props.wallet.selectedCrypto;
-			const selectedCurrency = this.props.wallet.selectedCurrency;
 
 
 			const exchangeRate = this.fiatRate()
@@ -236,7 +235,7 @@ class TransactionDetail extends PureComponent {
 			//If rbfIsSupported include the initialFee provided by the rbfData for the transaction
 			if (this.state.rbfIsSupported && displayFeePerByte) {
 				const initialFee = this.state.initialFee;
-				const { acronym, oshi, label } = getCoinData({selectedCrypto, cryptoUnit});
+				const { acronym, oshi } = getCoinData({selectedCrypto, cryptoUnit});
 				return `${fiat}\n${formatNumber(crypto)} ${acronym}\n${initialFee} ${oshi}/byte`;
 			}
 			// return `${formatNumber(crypto)} ${getCoinData({ selectedCrypto, cryptoUnit }).acronym} // ${fiat} ${selectedCurrency.toUpperCase()}`;
@@ -566,9 +565,9 @@ class TransactionDetail extends PureComponent {
 	render() {
 		if (!this.props.wallet.selectedTransaction) return <View />;
 		const { selectedCrypto } = this.props.wallet;
-		const { 
-			address, amount, block, data, fee, hash, inputAmount, 
-			messages, outputAmount, path, recievedAmount, sentAmount,
+		const {
+			address, amount, block, fee, hash,
+			path, sentAmount,
 			timestamp, transactionInputAmount, transactionOutputAmount, type
 		} = this.props.wallet.selectedTransaction;
 		const confirmations = this.getConfirmations();
@@ -742,11 +741,6 @@ const styles = StyleSheet.create({
 		flex: 1,
 		backgroundColor: "transparent"
 	},
-	separator: {
-		height: 1.5,
-		width: "100%",
-		marginVertical: 8
-	},
 	col1: {
 		alignItems: "flex-start",
 	},
@@ -782,10 +776,6 @@ const styles = StyleSheet.create({
 	subtext: {
 		fontSize: 14,
 		textAlign: "left"
-	},
-	subHeader: {
-		fontSize: 12,
-		textAlign: "center",
 	},
 	header: {
 		...systemWeights.bold,

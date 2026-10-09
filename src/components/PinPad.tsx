@@ -65,9 +65,15 @@ const _Pin = ({ onSuccess = () => null, updateSettings = () => null, wipeDevice 
 				updateSettings({ pin: false });
 			}, 500);
 		}
+		// Mount-only by design: this runs once to clear a stale pin setting during
+		// setup. Re-running it when `pinSetup` flips would wipe the setting the user
+		// is midway through creating.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 	
-	if (Platform.OS === "ios") useEffect(() => LayoutAnimation.easeInEaseOut());
+	useEffect(() => {
+		if (Platform.OS === "ios") LayoutAnimation.easeInEaseOut();
+	});
 
 	const _wipeDevice = async () => {
 		await wipeDevice();

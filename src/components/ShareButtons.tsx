@@ -5,7 +5,8 @@ import {
     Share,
     Easing,
     Dimensions,
-    PixelRatio
+    PixelRatio,
+    Platform
 } from "react-native";
 import PropTypes from "prop-types";
 import {systemWeights} from "react-native-typography";
@@ -15,7 +16,6 @@ import Clipboard from "@react-native-clipboard/clipboard";
 
 const {
   width: SCREEN_WIDTH,
-  height: SCREEN_HEIGHT,
 } = Dimensions.get('window');
 
 // based on iphone 5s's scale
@@ -51,8 +51,7 @@ const _ShareButtons = (
         shareDialogTitle = "", //Android Only
         onCopySuccessText = "Copied!",
         disabled = false,
-        textContainerStyle = {},
-        cryptoCurrency
+        textContainerStyle = {}
     }: ShareButtonsComponent) => {
     const [textOpacity] = useState(new Animated.Value(0));
 
@@ -212,13 +211,6 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: "transparent"
-    },
-    header: {
-        backgroundColor: "transparent",
-        textAlign: "center",
-        ...systemWeights.semibold,
-        marginTop: 15,
-        fontSize:normalize(24)
     },
 });
 

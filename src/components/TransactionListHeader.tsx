@@ -29,8 +29,7 @@ const _TransactionListHeader = (
 		displayTransactionList = false,
 		transactionsAreExpanded = false,
 		resetView = () => null,
-		expandTransactions = () => null,
-		theme = {}
+		expandTransactions = () => null
 	}: TransactionsComponent) => {
 	return (
 		<View style={styles.container}>

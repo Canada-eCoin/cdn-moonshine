@@ -7,12 +7,6 @@ import EvilIcon from "react-native-vector-icons/EvilIcons";
 import LottieView from "lottie-react-native";
 
 const {
-	Constants: {
-		colors
-	}
-} = require("../../ProjectData.json");
-
-const {
 	availableCoins,
 	getCoinImage,
 	getCoinData
@@ -58,7 +52,9 @@ interface LoadingComponent {
 }
 const _Loading = ({ theme = {}, loadingOpacity = 0, loadingMessage = "Loading State", loadingProgress = 0, animationName = "", enableProgressBar = true, enableSpinner = true, enableErrorIcon = false, enableSuccessIcon = false, width = 200, style = {}, textStyle = {}}: LoadingComponent) => {
 
-	if (Platform.OS === "ios") useEffect(() => LayoutAnimation.easeInEaseOut());
+	useEffect(() => {
+		if (Platform.OS === "ios") LayoutAnimation.easeInEaseOut();
+	});
 	let pbarColor = "#888888";
 	const Icon = () => {
 		if (availableCoins.includes(animationName)) {

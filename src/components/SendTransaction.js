@@ -40,7 +40,6 @@ import FeeEstimate from "./FeeEstimate";
 
 const {
   width: SCREEN_WIDTH,
-  height: SCREEN_HEIGHT,
 } = Dimensions.get('window');
 
 // based on iphone 5s's scale
@@ -281,7 +280,6 @@ class SendTransaction extends Component {
 
 	getFiatBalance = () => {
 		try {
-			const { selectedCrypto } = this.props.wallet;
 			const balance = this.getCryptoBalance();
 			const exchangeRate = this.fiatRate();
 			return getFiatBalance({ balance, exchangeRate });
@@ -382,7 +380,6 @@ class SendTransaction extends Component {
 
 	updateFee = (fee = 0) => {
 		try {
-			const selectedCrypto = this.props.wallet.selectedCrypto;
 			const transactionSize = this.getTransactionByteCount();
 			let totalFee = this.getTotalFee(fee, transactionSize);
 			totalFee = Number(totalFee);
@@ -422,7 +419,6 @@ class SendTransaction extends Component {
 	};
 
 	updateAmount = async (amount = "") => {
-		const selectedCrypto = this.props.wallet.selectedCrypto;
 		const cryptoUnit = this.props.settings.cryptoUnit;
 		let fiatAmount = "";
 		let satoshiAmount = "";
@@ -1324,14 +1320,6 @@ const styles = StyleSheet.create({
 	header: {
 		textAlign: "center",
 		fontSize: normalize(24)
-	},
-	button: {
-		position: "absolute",
-		alignItems: "center",
-		left: 0,
-		right: 0,
-		bottom: Platform.OS === "ios" ? 60 : 30,
-		zIndex: 200
 	},
 	copiedContainer: {
 		flex: 1,

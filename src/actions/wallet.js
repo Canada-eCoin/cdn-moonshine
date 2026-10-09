@@ -49,7 +49,10 @@ const deleteWallet = ({ wallet } = {}) => async (dispatch) => {
 	});
 };
 
-const createWallet = ({ wallet = "wallet0", selectedCrypto = "bitcoin", addressAmount = 2, changeAddressAmount = 2, mnemonic = "", generateAllAddresses = true, keyDerivationPath = "44" } = {}) => async (dispatch) => {
+// NOTE: this used to accept `keyDerivationPath`, which it never read — the path
+// actually comes from defaultWalletShape.keyDerivationPath[coin] further down.
+// Callers passing it were silently ignored. See the brief.
+const createWallet = ({ wallet = "wallet0", selectedCrypto = "bitcoin", addressAmount = 2, changeAddressAmount = 2, mnemonic = "", generateAllAddresses = true } = {}) => async (dispatch) => {
 	return new Promise(async (resolve) => {
 		const failure = (data) => {
 			resolve({error: true, data});

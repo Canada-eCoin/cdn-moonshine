@@ -33,7 +33,7 @@
       "sgd": { "name": "Singapore dollar", "unit": "SGD", "symbol": "$", "id": "singapore-dollar" },
       "sek": { "name": "Swedish krona", "unit": "SEK", "symbol": "kr", "id": "swedish-krona" },
       "chf": { "name": "Swiss franc", "unit": "CHF", "symbol": "CHF", "id": "swiss-franc" },
-      "usd": { "name": "United States dollar", "unit": "USD", "symbol": "$", "id": "united-states-dollar" },
+      "usd": { "name": "United States dollar", "unit": "USD", "symbol": "$", "id": "united-states-dollar" }
     },
     "donationAddresses": {
       "canadaecoin": "CQ9tmuYFyBs6jBty7mURsQppQhB7v75duq",

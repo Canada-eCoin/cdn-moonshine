@@ -34,7 +34,9 @@ const digits = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
 
 const _NumPad = ({ value = "", onPress = () => null, style = {}, buttonStyle = {} }: PinComponent) => {
 	
-	if (Platform.OS === "ios") useEffect(() => LayoutAnimation.easeInEaseOut());
+	useEffect(() => {
+		if (Platform.OS === "ios") LayoutAnimation.easeInEaseOut();
+	});
 	
 	const handleClear = (_vibrate = true): void => {
 		if (_vibrate) vibrate("impactMedium");

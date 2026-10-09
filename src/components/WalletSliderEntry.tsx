@@ -13,7 +13,6 @@ import { Text } from "../styles/components"
 import PropTypes from "prop-types";
 import { systemWeights } from "react-native-typography";
 import CoinButton from "./CoinButton";
-import WalletOptions from "./WalletOptions";
 
 
 const {
@@ -29,7 +28,7 @@ const {
 
 const { height, width } = Dimensions.get("window");
 
-import { getCoinData, availableCoins } from "../utils/networks";
+import { getCoinData } from "../utils/networks";
 
 interface WalletSliderEntryComponent {
 	walletId: string,
@@ -45,7 +44,9 @@ interface WalletSliderEntryComponent {
 
 const _WalletSliderEntry = ({ walletId = "bitcoin", wallet = { wallets: {}, selectedCurrency: "", selectedWallet: "wallet0", walletOrder: [] }, cryptoUnit = "satoshi", fiatSymbol = "", rates = [], updateWallet = () => null, deleteWallet = () => null, displayTestnet = true, onCoinPress = () => null, updateActiveSlide }: WalletSliderEntryComponent) => {
 	
-	if (Platform.OS === "ios") useEffect(() => LayoutAnimation.easeInEaseOut());
+	useEffect(() => {
+		if (Platform.OS === "ios") LayoutAnimation.easeInEaseOut();
+	});
 	const { selectedCurrency } = wallet;
 	
 	const getWalletName = () => {
@@ -118,12 +119,6 @@ const _WalletSliderEntry = ({ walletId = "bitcoin", wallet = { wallets: {}, sele
 			if(!wallet.selectedCurrency.toUpperCase()) return 0;
 			if(!rates[wallet.selectedCurrency.toUpperCase()]) return 0;
 	 		return	Number(rates[wallet.selectedCurrency.toUpperCase()].rate);
-	}
-	
-	const exchangeRate = (coin) => {
-			if(!wallet.selectedCurrency.toUpperCase()) return 0;
-			if(!rates[wallet.selectedCurrency.toUpperCase()]) return 0;
-	 		return	1 / Number(rates[wallet.selectedCurrency.toUpperCase()].rate);
 	}
 	
 	const fiatRate = (acronym) => {

@@ -29,9 +29,10 @@ class Client {
     this.initSocket(protocol, options);
   }
 
-  initSocket(protocol, options) {
+  // NOTE: the `options` this vendored copy accepted is never read — all socket
+  // tuning below is hardcoded. Kept in the signature; marked unused.
+  initSocket(protocol, _options) {
     protocol = protocol || this._protocol;
-    options = options || this._options;
     switch (protocol) {
       case 'tcp':
         this.conn = new this.net.Socket();
@@ -167,7 +168,7 @@ class Client {
     }
   }
 
-  onMessage(body, n) {
+  onMessage(body, _n) {
     try {
       const msg = JSON.parse(body);
       if (msg instanceof Array) {
@@ -188,7 +189,7 @@ class Client {
 
   onConnect() {}
 
-  onClose(e) {
+  onClose(_e) {
     this.status = 0;
     Object.keys(this.callback_message_queue).forEach(key => {
       this.callback_message_queue[key](new Error('close connect'));

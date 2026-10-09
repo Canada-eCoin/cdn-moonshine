@@ -1,6 +1,5 @@
 
 import * as actions from "../actions";
-import settings from '../config/settings';
 import Meteor, { Mongo } from '@meteorrn/core';
 
 console.log('Initializing ecoincore.js module');
@@ -115,13 +114,6 @@ function setupDDPEventHandlers() {
   
   return true;
 }
-
-// Socket event logging
-const socket = Data.ddp.socket;
-const socketEvents = ['open', 'close', 'message:out', 'message:in', 'error'];
-socketEvents.forEach((eventName) => {
-  // socket.on(eventName, (event) => console.debug(eventName, event));
-});
 
 // Collection setup
 let Chainpacks = new Mongo.Collection('Chainpacks');

@@ -1,5 +1,5 @@
 import React, {memo} from "react";
-import { StyleSheet, Image, Dimensions, PixelRatio } from "react-native";
+import { StyleSheet, Image, Dimensions, PixelRatio, Platform } from "react-native";
 import {systemWeights} from "react-native-typography";
 import PropTypes from "prop-types";
 import { View, TouchableOpacity, Text } from "../styles/components";
@@ -14,7 +14,6 @@ const ListItem = ({ id = 0, word = "" } = {}) => {
 
 const {
   width: SCREEN_WIDTH,
-  height: SCREEN_HEIGHT,
 } = Dimensions.get('window');
 
 // based on iphone 5s's scale

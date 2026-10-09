@@ -60,16 +60,15 @@ import * as bip38 from "bip38";
 import * as wif from "wif";
 //import ElectrumTesting from "./ElectrumTesting";
 
-import eCoinCore from "../utils/ecoincore";
+// Imported for its side effects, NOT for a binding. This module runs
+// Meteor.connect() to the eCoinCore CacheBox and installs a process.nextTick
+// polyfill at module scope. Nothing here uses its exports — that is deliberate.
+// Do not "clean up" this import.
+import "../utils/ecoincore";
 
 
 const { UIManager } = NativeModules;
 const Url = require("url-parse");
-const {
-	Constants: {
-		colors,
-	},
-} = require("../../ProjectData.json");
 const {
 	parsePaymentRequest,
 	isOnline,
@@ -379,7 +378,7 @@ export default class App extends Component {
 		// our app crashes,. 
 		// HACK: Use only the hard coded servers for now, until we can sort out the crashing.
 		return;
-			
+		// eslint-disable-next-line no-unreachable -- deliberately unreachable; see the HACK above
 		try {
 			const { selectedCrypto } = this.props.wallet;
 
@@ -467,8 +466,7 @@ export default class App extends Component {
 
 			//Enable the loading state
 			if (this.state.loadingTransactions !== true) this.setState({ loadingTransactions: true });
-			const { selectedWallet, selectedCrypto, selectedCurrency } = this.props.wallet;
-			const { selectedService } = this.props.settings;
+			const { selectedWallet, selectedCrypto } = this.props.wallet;
 			const keyDerivationPath = this.props.wallet.wallets[selectedWallet].keyDerivationPath[selectedCrypto];
 			const addressType = this.props.wallet.wallets[selectedWallet].addressType[selectedCrypto];
 

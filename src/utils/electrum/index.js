@@ -256,7 +256,10 @@ const subscribeAddress = async ({ id = "wallet0bitcoin", address = "", coin = "b
 	}
 };
 
-const unSubscribeAddress = async (scriptHashes = [], id = Math.random()) => {
+// NOTE: `coin` was previously read here without being declared or passed in, so any
+// call to this (exported) function threw a ReferenceError. A third defaulted parameter
+// was added rather than changing the calling convention — confirm the intent. See brief.
+const unSubscribeAddress = async (scriptHashes = [], id = Math.random(), coin = "bitcoin") => {
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);

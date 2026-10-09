@@ -351,14 +351,14 @@ class ElectrumClient extends Client {
           return { error: true, data: e };
         }
     }
-    blockchainTransaction_get(tx_hash, verbose=false, merkle=false){
+    blockchainTransaction_get(tx_hash, verbose=false, _merkle=false){
         try {
             return this.request('blockchain.transaction.get', [tx_hash, verbose]);
         } catch (e) {
           return { error: true, data: e };
         }
     }
-  async blockchainTransactions_get(tx_hashes, verbose=false, merkle=false){
+  async blockchainTransactions_get(tx_hashes, verbose=false, _merkle=false){
     try {
       const result = [];
       await Promise.all(tx_hashes.map(async (tx) => {
@@ -392,12 +392,11 @@ class ElectrumClient extends Client {
         }
     }
   
-  requestBatch(method, params, secondParam) {
-    const parentPromise = super.requestBatch(method, params, secondParam);
-    return parentPromise.then(response => {
-      return response;
-    });
-  }
+  // NOTE: this class used to define `requestBatch` twice. The second definition
+  // shadowed this one and omitted `timeLastCall` and `keepAlive()`, which meant
+  // batch requests never reset the idle watchdog that `request()` maintains.
+  // The duplicate was removed so batch traffic counts as activity, matching
+  // `request()` above. See the brief for both bodies.
   blockchainScripthash_getBalanceBatch(scripthash) {
     return this.requestBatch('blockchain.scripthash.get_balance', scripthash);
   }

@@ -4,7 +4,8 @@ import {
 	FlatList,
 	RefreshControl,
 	Dimensions,
-	PixelRatio
+	PixelRatio,
+	Platform
 } from "react-native";
 import PropTypes from "prop-types";
 import { systemWeights } from "react-native-typography";
@@ -13,7 +14,6 @@ import { View, Text } from "../styles/components";
 
 const {
   width: SCREEN_WIDTH,
-  height: SCREEN_HEIGHT,
 } = Dimensions.get('window');
 
 // based on iphone 5s's scale
