@@ -1,5 +1,10 @@
 # Signing and publishing a Canada eCoin mobile build
 
+> **iOS is different.** This document covers Android. iOS cannot install an unsigned
+> build at all — Apple gates signing behind a developer account, so there is no
+> "anyone with a key can sign it" path. See [`SIGNING-iOS.md`](./SIGNING-iOS.md) before
+> assuming any of the below carries over.
+
 This repo builds **unsigned** (and debug-key-signed) APKs. It does not hold signing
 keys, and it does not publish to any store. Signing and publishing are deliberate acts
 performed by a person who holds a key — not a side effect of a pull request, and not a
