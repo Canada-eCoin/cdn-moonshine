@@ -3,7 +3,8 @@ import {
 	StyleSheet,
 	TouchableOpacity,
     Dimensions,
-    PixelRatio
+    PixelRatio,
+    Platform
 } from "react-native";
 import PropTypes from "prop-types";
 import { systemWeights } from "react-native-typography";
@@ -18,7 +19,6 @@ interface XButtonComponent {
 
 const {
   width: SCREEN_WIDTH,
-  height: SCREEN_HEIGHT,
 } = Dimensions.get('window');
 
 // based on iphone 5s's scale

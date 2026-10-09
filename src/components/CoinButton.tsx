@@ -9,12 +9,11 @@ import { systemWeights } from "react-native-typography";
 import bitcoinUnits from "bitcoin-units";
 import { Text, View } from "../styles/components";
 
-const { eCoinCore } = require("../utils/ecoincore");
+// Side-effect import — see the note in App.js. Do not remove.
+require("../utils/ecoincore");
 
 const {
 	formatNumber,
-	getFiatBalance,
-	getExchangeRate,
 	normalize
 } = require("../utils/helpers");
 
@@ -59,22 +58,14 @@ interface CoinButtonComponent {
 	balance?: number
 }
 
-const getCryptoLabel = ({ selectedCrypto = "bitcoin" } = {}) => {
-	try {
-		return getCoinData({ selectedCrypto }).label;
-	} catch (e) {
-		console.log(e);
-	}
-};
-
 const isInfinite = (n) => {
   return n === n/0;
 }
 
 const _CoinButton = (
-	{ onCoinPress, cryptoUnit, coin, label, walletId, balance, fiatSign, 
-		selectedCryptoByName, fiatPrice, fiatSymbol, selectedCrypto, fiatValue, 
-		fiatBalance, exchangeRate, selectedCurrency,fiatInBitcoin, acronym, priceInSatoshi, estValueInSatoshi, estValueInFiat
+	{ onCoinPress, cryptoUnit, coin, walletId, balance, fiatSign,
+		selectedCryptoByName, fiatPrice, fiatSymbol, fiatBalance, exchangeRate,
+		priceInSatoshi, estValueInSatoshi
 
 	}: CoinButtonComponent) => {
 	// let acronym = getCoinData({ selectedCrypto: coin, cryptoUnit }).acronym
@@ -187,13 +178,6 @@ _CoinButton.propTypes = {
 };
 
 const styles = StyleSheet.create({
-	button: {
-		width: "82%",
-		minHeight: normalize(60),
-		flexDirection: "row",
-		backgroundColor: "transparent",
-		marginBottom: normalize(15)
-	},
 	buttonContent: {
 		flex: 1,
 		backgroundColor: "transparent",
@@ -253,16 +237,6 @@ const styles = StyleSheet.create({
 		fontSize: normalize(12),
 		textAlign: "left",
 		fontFamily: 'monospace'
-	},
-	unsubText: {
-		...systemWeights.regular,
-		fontSize: normalize(19),
-		textAlign: "right"
-	},
-	errorText: {
-		...systemWeights.regular,
-		fontSize: normalize(10),
-		textAlign: "right"
 	},
 	balanceText: {
 		...systemWeights.regular,

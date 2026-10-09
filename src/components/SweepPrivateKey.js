@@ -101,7 +101,7 @@ class SendTransaction extends PureComponent {
 
 	async componentDidMount() {
 
-		_initializeState = async (data) => {
+		this._initializeState = async (data) => {
 			try {
 				const { selectedCrypto, selectedWallet } = this.props.wallet;
 				const cryptoUnit = this.props.settings.cryptoUnit;
@@ -156,14 +156,14 @@ class SendTransaction extends PureComponent {
 			}
 			if (Platform.OS === "ios") {
 				try {
-					_initializeState(result.data);
+					this._initializeState(result.data);
 				} catch (e) {
 					console.log(e);
 				}
 			} else {
 				InteractionManager.runAfterInteractions(async () => {
 					try {
-						_initializeState(result.data);
+						this._initializeState(result.data);
 					} catch (e) {
 						console.log(e);
 					}

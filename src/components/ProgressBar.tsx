@@ -20,7 +20,9 @@ interface ProgressBarComponent {
 
 const _ProgressBar = ({ progress = 0, height = 0, width = 0, color = colors.white, style = {} }: ProgressBarComponent) => {
 	
-	if (Platform.OS === "ios") useEffect(() => LayoutAnimation.easeInEaseOut());
+	useEffect(() => {
+		if (Platform.OS === "ios") LayoutAnimation.easeInEaseOut();
+	});
 	
 	return (
 		<View style={[styles.container, { height, width, borderLeftColor: progress <= 0 ? "transparent" : color, borderRightColor: progress >= 1 ? color : "transparent" }, style]}>

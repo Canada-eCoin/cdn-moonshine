@@ -23,12 +23,6 @@ const itemHorizontalMargin = wp(2);
 const sliderWidth = width;
 const itemWidth = slideWidth + itemHorizontalMargin * 2;
 
-const {
-	Constants: {
-		colors
-	}
-} = require("../../ProjectData.json");
-
 interface WalletCarouselComponent {
 	wallet: { wallets: {}, selectedWallet: string, walletOrder: string[] },
 	onCoinPress: Function,
@@ -39,7 +33,9 @@ interface WalletCarouselComponent {
 }
 const _WalletCarousel = ({ wallet = { wallets: {}, selectedWallet: "wallet0", walletOrder: [] }, onCoinPress = () => null, updateWallet = () => null, deleteWallet = () => null, cryptoUnit = "satoshi", rates = {}, fiatSymbol = "", displayTestnet = true }: WalletCarouselComponent) => {
 
-	if (Platform.OS === "ios") useEffect(() => LayoutAnimation.easeInEaseOut());
+	useEffect(() => {
+		if (Platform.OS === "ios") LayoutAnimation.easeInEaseOut();
+	});
 
 	const [activeSlide, setActiveSlide] = useState(wallet.walletOrder.indexOf(wallet.selectedWallet));
 

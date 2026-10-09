@@ -2,8 +2,7 @@ import React, {memo, useState, useRef, useEffect} from "react";
 import {
 	StyleSheet,
 	View,
-	Text,
-	Platform
+	Text
 } from "react-native";
 import PropTypes from "prop-types";
 import {
@@ -15,12 +14,6 @@ import {
 import { systemWeights } from "react-native-typography";
 import EvilIcon from "react-native-vector-icons/EvilIcons";
 import XButton from "./XButton";
-
-const {
-	Constants: {
-		colors
-	}
-} = require("../../ProjectData.json");
 
 interface CameraComponent {
 	onBarCodeRead: Function,

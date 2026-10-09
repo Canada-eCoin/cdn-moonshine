@@ -1,13 +1,10 @@
 import React, { memo } from "react";
 import {
 	StyleSheet,
-	TouchableOpacity,
-	Dimensions,
-	PixelRatio
+	TouchableOpacity
 } from "react-native";
 import PropTypes from "prop-types";
 import { systemWeights } from "react-native-typography";
-import bitcoinUnits from "bitcoin-units";
 import { View, Text } from "../styles/components";
 
 const moment = require("moment");
@@ -44,7 +41,6 @@ const _TransactionRow = (
 		coin = "bitcoin",
 		address = "",
 		hash = "",
-		txid = "",
 		amount = 0,
 		label = "",
 		date = 0,

@@ -22,7 +22,6 @@ const {
 
 const {
   width: SCREEN_WIDTH,
-  height: SCREEN_HEIGHT,
 } = Dimensions.get('window');
 
 // based on iphone 5s's scale
@@ -48,13 +47,14 @@ interface CameraComponent {
 }
 
 const {
-	getCoinImage,
 	getCoinData
 } = require("../utils/networks");
 
 const _CameraRow = ({ onSendPress = () => null, onReceivePress = () => null, onCameraPress = () => null, style = {}, coin }: CameraComponent) => {
 	
-	if (Platform.OS === "ios") useEffect(() => LayoutAnimation.easeInEaseOut());
+	useEffect(() => {
+		if (Platform.OS === "ios") LayoutAnimation.easeInEaseOut();
+	});
 	
 	const _onSendPress = () => onSendPress();
 	const _onCameraPress = () => onCameraPress();

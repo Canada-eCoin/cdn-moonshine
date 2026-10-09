@@ -7,12 +7,6 @@ const moment = require("moment");
 const {
 	networks
 } = require("./networks");
-const {
-	Constants: {
-		currencies
-	}
-} = require("../../ProjectData.json");
-
 //Get info from an address path ("m/49'/0'/0'/0/1")
 const getInfoFromAddressPath = async (path = "") => {
 	return new Promise(async (resolve) => {

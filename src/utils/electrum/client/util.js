@@ -1,13 +1,13 @@
 'use strict';
 
-const makeRequest = (exports.makeRequest = (method, params, id) => {
+exports.makeRequest = (method, params, id) => {
   return JSON.stringify({
     jsonrpc: '2.0',
     method: method,
     params: params,
     id: id,
   });
-});
+};
 
 const createRecuesiveParser = (exports.createRecuesiveParser = (max_depth, delimiter) => {
   const MAX_DEPTH = max_depth;
@@ -29,14 +29,14 @@ const createRecuesiveParser = (exports.createRecuesiveParser = (max_depth, delim
   return recursiveParser;
 });
 
-const createPromiseResult = (exports.createPromiseResult = (resolve, reject) => {
+exports.createPromiseResult = (resolve, reject) => {
   return (err, result) => {
     if (err) reject(err);
     else resolve(result);
   };
-});
+};
 
-const createPromiseResultBatch = (exports.createPromiseResultBatch = (resolve, reject, argz) => {
+exports.createPromiseResultBatch = (resolve, reject, argz) => {
   return (err, result) => {
     if (result && result[0] && result[0].id) {
       // this is a batch request response
@@ -47,7 +47,7 @@ const createPromiseResultBatch = (exports.createPromiseResultBatch = (resolve, r
     if (err) reject(err);
     else resolve(result);
   };
-});
+};
 
 class MessageParser {
   constructor(callback) {
@@ -57,7 +57,9 @@ class MessageParser {
   }
   run(chunk) {
     this.buffer += chunk;
-    while (true) {
+    // `for (;;)` rather than `while (true)`: identical loop, but no constant
+    // test expression for no-constant-condition to flag.
+    for (;;) {
       const res = this.recursiveParser(0, this.buffer, this.callback);
       this.buffer = res.buffer;
       if (res.code === 0) {

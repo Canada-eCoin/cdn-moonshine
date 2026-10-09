@@ -1,6 +1,5 @@
 /**
  * @format
- * @flow strict-local
  */
 import * as React from "react";
 import {useState, useEffect, memo} from "react";
@@ -101,6 +100,10 @@ const _FeeEstimate = (
 		return () => {
 			componentWillUnmount();
 		};
+		// Mount-only by design: componentDidMount/componentWillUnmount are closures
+		// recreated on every render, so listing them would re-run this effect
+		// continuously instead of once.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
 	const onFeePress = (sats) => {

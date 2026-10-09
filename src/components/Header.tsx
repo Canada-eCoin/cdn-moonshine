@@ -6,8 +6,7 @@ import {systemWeights} from "react-native-typography";
 import { Text } from "../styles/components";
 
 const {
-	formatNumber,
-	capitalize
+	formatNumber
 } = require("../utils/helpers");
 
 const {
@@ -109,7 +108,7 @@ const _Header = ({compress = false, selectedCurrency = "", fiatSymbol = "$", sel
 			<Text style={[styles.header, { fontSize: fontSize/2 }]}>{walletName}{compress && `: ${getCryptoLabel({selectedCrypto})}`}</Text>}
 			{!compress && <Text style={[styles.cryptoHeader, { fontSize: fontSize/1.8, ...selectedCryptoStyle }]}>{getCryptoLabel({selectedCrypto})}</Text>}
 			
-			{fiatValue !== NaN && fiatValue !== 0 && !isInfinite(fiatValue) && 
+			{!isNaN(fiatValue) && fiatValue !== 0 && !isInfinite(fiatValue) && 
 				<View style={styles.row}>
 					<View style={{ flexDirection: "row", alignItems: "center", left: -4 }}>
 						<Text style={[styles.fiatSymbol, { fontSize: fontSize/2 }]}>{fiatSymbol}</Text>
@@ -121,10 +120,10 @@ const _Header = ({compress = false, selectedCurrency = "", fiatSymbol = "$", sel
 					<Text style={[styles.cryptoValue, { fontSize: fontSize/2.5 }]}>{cryptoValue} {getCryptoUnitLabel({ cryptoUnit, selectedCrypto })}</Text>
 				</View>
 				<View style={styles.cryptoValueRow}>
-					{bitcoinRate !== NaN && bitcoinRate !== 0 && !isInfinite(bitcoinRate) && 
+					{!isNaN(bitcoinRate) && bitcoinRate !== 0 && !isInfinite(bitcoinRate) && 
 						<Text style={[styles.exchangeRate, { fontSize: fontSize/4 }]}>{`1  ${getCoinData({selectedCrypto, cryptoUnit}).crypto} = ${Number( exchangeRate / bitcoinRate ).toFixed(8)} BTC`}</Text>
 					}
-					{exchangeRate !== NaN && exchangeRate !== 0 && !isInfinite(exchangeRate) && 
+					{!isNaN(exchangeRate) && exchangeRate !== 0 && !isInfinite(exchangeRate) && 
 						<Text style={[styles.exchangeRate, { fontSize: fontSize/4 }]}>{`1  ${getCoinData({selectedCrypto, cryptoUnit}).crypto} = ${fiatSymbol} ${exchangeRate} ${selectedCurrency}`}</Text>
 					}
 				</View> 

@@ -1,3 +1,8 @@
+/* eslint-disable no-unused-vars, @typescript-eslint/no-unused-vars -- The "specify amount" modal in this screen is
+ * deliberately parked: its JSX is commented out further down, so
+ * `toggleSpecifyAmount`, `toggleDisplayInCrypto`, `updateRequestedAmount`,
+ * `getRequestedValue`, the DefaultModal/NumPad imports and the modal's state are
+ * intentionally unreferenced. Delete this disable when the modal is un-parked. */
 import React, {useState, useEffect, memo} from "react";
 import {
 	StyleSheet,
@@ -17,7 +22,6 @@ import NumPad from "./NumPad";
 import { QRCode, Text, MaterialIcons } from "../styles/components";
 const {
 	Constants: {
-		colors,
 		currencies
 	}
 } = require("../../ProjectData.json");
@@ -37,7 +41,6 @@ const {
 
 const {
   width: SCREEN_WIDTH,
-  height: SCREEN_HEIGHT,
 } = Dimensions.get('window');
 
 // based on iphone 5s's scale
@@ -80,7 +83,9 @@ interface ReceiveTransactionComponent extends Default, FormatUri {
 }
 const _ReceiveTransaction = ({ selectedCrypto = "bitcoin", selectedCurrency = "usd", address = "", amount = "", label = "", cryptoUnit = "satoshi", exchangeRate = 0, size = 200, disabled = false, path}: ReceiveTransactionComponent) => {
 
-	if (Platform.OS === "ios") useEffect(() => LayoutAnimation.easeInEaseOut());
+	useEffect(() => {
+		if (Platform.OS === "ios") LayoutAnimation.easeInEaseOut();
+	});
 	const [requestedAmount, setRequestedAmount] = useState(amount || "0"); //Represented as sats
 	const [fiatAmount, setFiatAmount] = useState(amount || `${currencies[selectedCurrency].symbol}0`); //Represented and formatted based on selectedFiat (USD)
 	const [cryptoAmount, setCryptoAmount] = useState(amount || "0"); //Represented and formatted based on cryptoUnit (sats/bitcoin)

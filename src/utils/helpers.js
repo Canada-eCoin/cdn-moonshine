@@ -2,7 +2,8 @@ import {
 	Linking,
 	Dimensions,
 	PixelRatio,
-	Vibration
+	Vibration,
+	Platform
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
@@ -803,12 +804,6 @@ const formatNumber = (num) => {
 	return n.replace( /\d(?=(?:\d{3})+(?:\.|$))/g, (m, i) => p < 0 || i < p ? `${m},` : m );
 };
 
-const formatSatoshis = (num) => {
-	const n = String(num);
-	const p = n.indexOf('.');
-	return n.replace( /\d(?=(?:\d{3})+(?:\.|$))/g, (m, i) => p < 0 || i < p ? `${m},` : m );
-};
-
 const removeDecimals = (str) => {
 	return str.replace( /^([^.]*\.)(.*)$/, function ( a, b, c ) {
 		return b + c.replace( /\./g, '' );
@@ -1131,7 +1126,6 @@ const getScriptHash = (address = "", network = networks["bitcoin"]) => {
 
 const {
   width: SCREEN_WIDTH,
-  height: SCREEN_HEIGHT,
 } = Dimensions.get('window');
 
 // based on iphone 5s's scale

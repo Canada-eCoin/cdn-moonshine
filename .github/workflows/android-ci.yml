@@ -1,71 +1,169 @@
-name: Android Debug APK CI
+# Android CI — manually driven, on purpose.
+#
+# There is no `push:` and no `pull_request:` trigger here. Nothing builds, and nothing
+# is published, until a person asks for it. Runs are started from the Actions tab
+# ("Run workflow") or with:
+#
+#     gh workflow run "Android build (manual)" --ref master
+#
+# History: the previous version of this file triggered on push/PR to master and had
+# never produced a single run — the workflow landed 2025-06-19 and nothing has been
+# pushed to this repo since. It also pinned actions/checkout, actions/cache and
+# actions/setup-java at v3, which are built for a Node 16 runtime GitHub has retired.
+#
+# THIS WORKFLOW HOLDS NO KEYS. There is not one `secrets.*` reference in it. Builds are
+# deliberately unsigned; whoever wants to publish an APK downloads it, signs it with a
+# key they control, and uploads it themselves. See docs/SIGNING.md.
+
+name: Android build (manual)
 
 on:
-  push:
-    branches: [master]
-  pull_request:
-    branches: [master]
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: Which APK(s) to build and attach
+        type: choice
+        options:
+          - both
+          - debug-only
+          - release-only
+        default: both
+
+# Nothing outside the repo is read; nothing is written back.
+permissions:
+  contents: read
+
+# A second manual run supersedes the first rather than racing it.
+concurrency:
+  group: android-build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+  JAVA_VERSION: '17'
 
 jobs:
-  build-android:
+  verify:
+    name: Lint & test
     runs-on: ubuntu-latest
-
+    timeout-minutes: 15
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Cache Node modules
-        uses: actions/cache@v3
-        with:
-          path: |
-            **/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Cache Gradle
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper/
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle', '**/gradle.lockfile') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
-      - name: Set up JDK
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '17'
+      - name: Checkout
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
 
-      - name: Install Node dependencies
-        run: yarn install
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
 
-      - name: Install Android build deps
-        working-directory: android
-        run: ./gradlew dependencies
+      # Cheap and first: a lint failure should cost seconds, not a Gradle build.
+      - name: Lint
+        run: yarn lint
+
+      - name: Test
+        run: yarn test --ci
+
+  build:
+    name: Build APK
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK
+        uses: actions/setup-java@v6
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+
+      # Replaces hand-rolled actions/cache@v3 blocks: caches the wrapper distribution,
+      # the Gradle caches and the configuration cache, keyed correctly.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
 
       - name: Build debug APK
+        if: inputs.variant != 'release-only'
         working-directory: android
         run: ./gradlew assembleDebug
 
-      - name: Get build date
-        id: vars
-        run: echo "BUILD_DATE=$(date +'%Y-%m-%d-%H-%M')" >> $GITHUB_ENV
+      - name: Build release APK (unsigned)
+        if: inputs.variant != 'debug-only'
+        working-directory: android
+        run: ./gradlew assembleRelease
 
-      - name: Rename APK with build date
+      - name: Stamp and checksum artifacts
+        id: stamp
         run: |
-          mv android/app/build/outputs/apk/debug/app-debug.apk android/app/build/outputs/apk/debug/app-debug-${{ env.BUILD_DATE }}.apk
+          set -euo pipefail
+          BUILD_DATE="$(date -u +'%Y-%m-%d-%H%M')"
+          SHORT_SHA="$(git rev-parse --short HEAD)"
+          echo "BUILD_DATE=$BUILD_DATE" >> "$GITHUB_ENV"
+          echo "SHORT_SHA=$SHORT_SHA" >> "$GITHUB_ENV"
 
-      - name: Upload debug APK
-        uses: actions/upload-artifact@v4
+          OUT=android/app/build/outputs/apk
+          TMP="$(mktemp -d)"
+          FOUND=0
+
+          for pair in "debug/app-debug.apk:debug" "release/app-release-unsigned.apk:release-unsigned"; do
+            src="${pair%%:*}"; label="${pair##*:}"
+            if [ -f "$OUT/$src" ]; then
+              dest="cdn-moonshine-${BUILD_DATE}-${SHORT_SHA}-${label}.apk"
+              cp "$OUT/$src" "$TMP/$dest"
+              FOUND=$((FOUND + 1))
+            fi
+          done
+
+          if [ "$FOUND" -eq 0 ]; then
+            echo "::error::No APKs were produced — check the Gradle output above."
+            exit 1
+          fi
+
+          ( cd "$TMP" && sha256sum ./*.apk | tee SHA256SUMS )
+
+          {
+            echo "### Build $BUILD_DATE ($SHORT_SHA)"
+            echo
+            echo "| artifact | source apk | signed |"
+            echo "|---|---|---|"
+            if [ -f "$TMP"/cdn-moonshine-*-debug.apk ]; then
+              echo "| cdn-moonshine-${BUILD_DATE}-${SHORT_SHA}-debug.apk | \`app-debug.apk\` | Android debug key (test installs only) |"
+            fi
+            if [ -f "$TMP"/cdn-moonshine-*-release-unsigned.apk ]; then
+              echo "| cdn-moonshine-${BUILD_DATE}-${SHORT_SHA}-release-unsigned.apk | \`app-release-unsigned.apk\` | **unsigned — sign it yourself** |"
+            fi
+            echo
+            echo '```'
+            cat "$TMP/SHA256SUMS"
+            echo '```'
+            echo
+            echo "Commit: \`$(git rev-parse HEAD)\`"
+            echo
+            echo "Signing instructions: \`docs/SIGNING.md\`. This workflow holds no keys."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "artifacts_dir=$TMP" >> "$GITHUB_OUTPUT"
+          ls -l "$TMP"
+
+      - name: Attach APKs
+        uses: actions/upload-artifact@v7
         with:
-          name: app-debug-${{ env.BUILD_DATE }}
-          path: android/app/build/outputs/apk/debug/app-debug-${{ env.BUILD_DATE }}.apk
-
+          name: cdn-moonshine-${{ env.BUILD_DATE }}-${{ env.SHORT_SHA }}
+          path: ${{ steps.stamp.outputs.artifacts_dir }}/*
+          if-no-files-found: error
+          # Long enough that whoever intends to sign and publish an APK still can.
+          retention-days: 90

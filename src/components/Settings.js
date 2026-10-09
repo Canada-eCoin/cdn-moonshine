@@ -31,7 +31,7 @@ import ListItem from "./ListItem";
 import TextInputRow from "./SettingsOptions/TextInputRow";
 import HeaderRow from "./SettingsOptions/HeaderRow";
 import MultiOptionRow from "./SettingsOptions/MultiOptionRow";
-import { Text, Fontisto, MaterialCommunityIcons, FontAwesome, FontAwesome5, Foundation } from "../styles/components";
+import { Text, Fontisto, MaterialCommunityIcons, FontAwesome, FontAwesome5 } from "../styles/components";
 
 const {
 	Constants: {
@@ -51,7 +51,6 @@ const {
 	setKeychainValue
 } = require("../utils/helpers");
 const {
-	getCoinData,
 	defaultWalletShape
 } = require("../utils/networks");
 const moment = require("moment");
@@ -201,7 +200,7 @@ class Settings extends PureComponent {
 		} catch (e) {}
 	}
 
-	componentDidUpdate(prevProps, prevState) {
+	componentDidUpdate(_prevProps, _prevState) {
 		// Safely apply layout animations with a slight delay to avoid conflicts with React 19's rendering
 		if (Platform.OS === "ios") {
 			setTimeout(() => {
@@ -898,8 +897,6 @@ class Settings extends PureComponent {
 		let keyDerivationPath = "84";  // TODO: Hardcoded wallet config should not exist.
 		try {keyDerivationPath = this.props.wallet.wallets[selectedWallet].keyDerivationPath[selectedCrypto];} catch (e) {}
 
-		let coinDataLabel = "?";
-		try {coinDataLabel = getCoinData({ selectedCrypto, cryptoUnit: "BTC" });} catch (e) {}
 
 		let addressType = "bech32";  // TODO: Hardcoded wallet config should not exist.
 		try {addressType = this.props.wallet.wallets[selectedWallet].addressType[selectedCrypto];} catch (e) {}

@@ -1,4 +1,3 @@
-import bitcoinUnits from "bitcoin-units";
 import * as actions from "../actions"
 
 const {
@@ -22,7 +21,6 @@ Recommended fees are always grossly overestimated.
 Until this is resolved, getRecommendedFee divides that estimation by 4.
  */
 export const getRecommendedFee = ({ coin = "canadaecoin", transactionSize = 256 } = {}) => (dispatch) => {
-	const DIVIDE_RECOMMENDED_FEE_BY = 10;
 	const MAX_FEE_MULTIPLIER = 4;
 	return new Promise(async (resolve) => {
 

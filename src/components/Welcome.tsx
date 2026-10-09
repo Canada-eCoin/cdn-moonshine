@@ -6,7 +6,6 @@ import { Text } from "../styles/components";
 
 const {
   width: SCREEN_WIDTH,
-  height: SCREEN_HEIGHT,
 } = Dimensions.get('window');
 
 // based on iphone 5s's scale
@@ -27,7 +26,9 @@ const {
 
 const _Welcome = ({ onClose = () => null, children = <View /> } = {}) => {
 
-	if (Platform.OS === "ios") useEffect(() => LayoutAnimation.easeInEaseOut());
+	useEffect(() => {
+		if (Platform.OS === "ios") LayoutAnimation.easeInEaseOut();
+	});
 	return (
 		<View style={styles.container}>
 			<Text style={styles.header}>Canada eCoin Mobile</Text>

@@ -1,6 +1,11 @@
 /**
  * @format
- * @flow
+ *
+ * Was annotated `@flow` — a leftover from the upstream Moonshine template. Flow
+ * was never wired up in this fork (no flow-bin, no flow script), and the pragma
+ * crashed @babel/eslint-parser outright, so the file could not be linted at all.
+ * The three Flow annotations it carried were erased at build time and are gone
+ * with it; add TypeScript types if you want them checked.
  */
 
 import React, {PureComponent} from "react";
@@ -37,9 +42,7 @@ const {
 	}
 } = require("../../ProjectData.json");
 
-type Props = {};
-
-class ElectrumTesting extends PureComponent<Props> {
+class ElectrumTesting extends PureComponent {
 	
 	constructor(props) {
 		super(props);
@@ -81,7 +84,7 @@ class ElectrumTesting extends PureComponent<Props> {
 		};
 	}
 	
-	async componentDidMount(): void {
+	async componentDidMount() {
 		//Spin up the nodejs thread
 		//await Promise.all(nodejs.start("main.js"));
 		this.onCryptoButtonPress("bitcoin");
