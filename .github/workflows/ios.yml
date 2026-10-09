@@ -104,8 +104,9 @@ jobs:
         run: |
           set -euo pipefail
           # Diagnostics: if a build fails on C++ headers (the first iOS run failed on
-          # '<memory> file not found' while the app target was still on gnu++0x), these
-          # four lines say exactly why without needing a 40-minute rebuild.
+          # '<memory> file not found'), these lines say why without needing a 40-minute
+          # rebuild. Teed to stdout as well as the summary so they are readable from
+          # the job log via `gh run view --log`.
           {
             echo "### App target build settings"
             echo
@@ -115,7 +116,7 @@ jobs:
               | grep -E "CLANG_CXX_LANGUAGE_STANDARD|CLANG_CXX_LIBRARY|CLANG_ENABLE_MODULES|SWIFT_ENABLE_EXPLICIT_MODULES|_EXPERIMENTAL_SWIFT_EXPLICIT|IPHONEOS_DEPLOYMENT_TARGET|ENABLE_USER_SCRIPT_SANDBOXING" \
               | sort -u
             echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
           xcodebuild \
             -workspace ios/moonshine.xcworkspace \

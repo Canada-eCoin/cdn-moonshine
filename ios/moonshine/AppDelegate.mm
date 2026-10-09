@@ -1,3 +1,18 @@
+// This file is Objective-C++ (.mm), not Objective-C (.m), on purpose. Do not rename
+// it back.
+//
+// RNBootSplash.h branches on RCT_NEW_ARCH_ENABLED and, with the new architecture on,
+// imports its codegen spec (`RNBootSplashSpec`). That pulls in ReactCodegen ->
+// React-Fabric, whose public headers include C++ standard library headers (<memory>,
+// <optional>, <iosfwd>, <cassert>).
+//
+// Clang only adds libc++'s include path when the translation unit is a C++ one, so
+// importing RNBootSplash from an Objective-C file fails the module build with
+// "'memory' file not found" / "Could not build module 'ReactCodegen'". Compiling as
+// Objective-C++ gives the module build the C++ standard library it needs. React
+// Native's own template sidesteps this by having a Swift AppDelegate; this project
+// keeps the Objective-C one and makes it ObjC++.
+
 #import "AppDelegate.h"
 
 #import <React/RCTBridge.h>
