@@ -307,6 +307,31 @@ cmd_ios() {
 
 # ------------------------------------------------------------------------------- all ----
 
+# Local Metro bundling does not work in this environment, and it is not an RN-version
+# problem. Measured 2026-10-10: `npx react-native bundle --entry-file index.js` fails with
+# "Unable to resolve module react" — the plainest possible bare specifier — and the SAME
+# failure occurs on master with React Native 0.78.2 / metro 0.81.5, so it predates the
+# 0.79 upgrade. Ruled out along the way: package-exports resolution, a stale Metro cache,
+# mixed metro patch versions, an empty resolver.nodeModulesPaths, symlinked paths, and a
+# dotfile entry name. CI bundles fine, so the bundler remains the authority for that step.
+#
+# Consequence for this builder: `android debug` is meaningful (debug builds do not bundle
+# JS at all — they load it from the dev server), but a RELEASE build will fail here at
+# createBundleReleaseJsAndAssets until this is understood. It is reported rather than
+# hidden, because a green local build that means less than it appears is worse than none.
+cmd_bundle() {
+	bold "JS bundle (Metro)"
+	warn "known-broken locally: Metro cannot resolve bare specifiers in this environment"
+	info "  evidence: 'Unable to resolve module react', reproducible on master (RN 0.78.2 /"
+	info "  metro 0.81.5) as well as on the 0.79 branch, so it is not version-related"
+	info ""
+	info "  the release APK therefore cannot be built locally either, because that is the"
+	info "  path which bundles JS. CI bundles it correctly — use:"
+	info "    $0 ios --dispatch        (also builds Android release in the other workflow)"
+	info "    gh workflow run \"Android build (manual)\" --ref \$(git rev-parse --abbrev-ref HEAD)"
+	return 3
+}
+
 cmd_all() {
 	cmd_js
 	cmd_android debug
@@ -325,6 +350,7 @@ $(bold "subcommands")
   android [variant]   debug (default) | release | both | clean — then artifact checks
   ios-deps            why pod resolution cannot be checked locally (CocoaPods is macOS-only)
   ios                 why this cannot be local; --dispatch to run it on GitHub
+  bundle              why Metro bundling cannot run here (so release needs CI)
   verify              js + android debug — the "is this branch sane" command
   all                 js + android debug
 
@@ -340,6 +366,7 @@ case "${1:-}" in
 	deps)      shift; cmd_deps "$@" ;;
 	js)        cmd_js ;;
 	android)   shift; cmd_android "$@" ;;
+	bundle)    cmd_bundle ;;
 	ios-deps)  cmd_ios_deps ;;
 	ios)       shift; cmd_ios "$@" ;;
 	verify)    cmd_js; cmd_android debug ;;
