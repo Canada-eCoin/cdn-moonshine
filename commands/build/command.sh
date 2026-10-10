@@ -147,14 +147,14 @@ cmd_doctor() {
 	info "build cache: $(du -sh "$HOME/.gradle/caches/build-cache-1" 2>/dev/null | cut -f1 || echo absent)"
 
 	bold "iOS"
-	if command -v pod >/dev/null 2>&1; then
-		ok "CocoaPods $(pod --version) — 'ios-deps' can validate pod resolution locally"
-	else
-		warn "CocoaPods absent — 'ios-deps' unavailable"
-		info "to enable (needs sudo, ~50 MB):"
-		info "  sudo apt install -y ruby-full build-essential libcurl4-openssl-dev"
-		info "  sudo gem install cocoapods --no-document"
-	fi
+	# Tested on 2026-10-10 in a Debian container with ruby 3.1 + cocoapods 1.17.0: pod
+	# install dies in CocoaPods' own config.rb `unicode_normalize` while computing
+	# installation_root, before it reads the Podfile, and setting LANG/LC_ALL=C.UTF-8 does
+	# not help. Do not suggest 'apt install ruby' as a way to unlock this — it was tried
+	# and it buys nothing.
+	info "pod resolution cannot be checked here: CocoaPods does not run on Linux"
+	info "  (Ruby + CocoaPods installed and tested 2026-10-10; it crashes in"
+	info "   config.rb unicode_normalize before parsing the Podfile)" 
 	case "$(uname -s)" in
 		Darwin) ok "macOS — 'ios' can build here" ;;
 		*)      warn "'ios' cannot build here: an iOS build needs macOS and Xcode"
@@ -258,12 +258,25 @@ cmd_android_check() {
 
 cmd_ios_deps() {
 	bold "iOS pod resolution"
-	if ! command -v pod >/dev/null 2>&1; then
-		die "CocoaPods not installed. 'doctor' prints the two apt/gem commands that add it."
+	if command -v pod >/dev/null 2>&1; then
+		( cd ios && pod install )
+		ok "pods resolved"
+		git diff --quiet ios/Podfile.lock 2>/dev/null || warn "ios/Podfile.lock changed"
+		return 0
 	fi
-	( cd ios && pod install )
-	ok "pods resolved"
-	git diff --quiet ios/Podfile.lock 2>/dev/null || warn "ios/Podfile.lock changed"
+	warn "not available on this machine, and not for want of CocoaPods being installed"
+	info ""
+	info "CocoaPods was installed and tested here on 2026-10-10 (ruby 3.1.2, cocoapods"
+	info "1.17.0, in a Debian container). 'pod install' crashes inside CocoaPods' own"
+	info "config.rb during unicode_normalize of installation_root, before it reads the"
+	info "Podfile. LANG/LC_ALL=C.UTF-8 does not help. CocoaPods expects macOS."
+	info ""
+	info "So the iOS dependency loop has to happen where Xcode is:"
+	info "  $0 ios --dispatch     run the real build on GitHub on purpose"
+	info ""
+	info "That is why the pod failures on 2026-10-09 (use_flipper!, the lottie-ios pin)"
+	info "each cost a full CI run to discover: there is no local equivalent."
+	return 3
 }
 
 cmd_ios() {
@@ -279,10 +292,10 @@ cmd_ios() {
 	bold "iOS builds cannot be done locally"
 	info "an iOS build needs macOS, Xcode and the iOS SDK. No Linux toolchain substitutes."
 	info ""
-	info "what you CAN do here:"
-	info "  $0 ios-deps          validate Podfile + pod resolution (catches the class of"
-	info "                       failure that cost three CI runs on 2026-10-09/10)"
-	info "  $0 --dispatch-ios    run the real build on GitHub on purpose, not by accident"
+	info "what you cannot do here, and why:"
+	info "  pod resolution needs CocoaPods, which does not run on Linux — see: $0 ios-deps"
+	info "  (installed and tested 2026-10-10; it crashes before reading the Podfile)"
+	info "  $0 ios --dispatch    run the real build on GitHub on purpose, not by accident"
 	info ""
 	info "what CI then gives you, and why it is worth a deliberate dispatch:"
 	info "  * a simulator .app, a boot smoke test, and an unsigned .xcarchive"
@@ -307,10 +320,10 @@ $(bold "mobile local builder")
 
 $(bold "subcommands")
   doctor              what is installed, what CI expects, what is missing
-  deps [--update]     yarn install (frozen unless --update) + pod install when available
+  deps [--update]     yarn install (frozen unless --update); pod install on macOS only
   js                  lint + jest, exactly as CI's verify job runs them
   android [variant]   debug (default) | release | both | clean — then artifact checks
-  ios-deps            validate Podfile + pod resolution locally
+  ios-deps            why pod resolution cannot be checked locally (CocoaPods is macOS-only)
   ios                 why this cannot be local; --dispatch to run it on GitHub
   verify              js + android debug — the "is this branch sane" command
   all                 js + android debug
