@@ -173,22 +173,22 @@ jobs:
           DD="$HOME/dd"
           CAS="$HOME/$COMPILATION_CACHE_DIR"
           mkdir -p "$CAS"
-          # Xcode 26 dropped the Swift 5.6 compatibility shims for x86_64, so Swift pods
-          # (VisionCamera, lottie-ios, lottie-react-native) compile but fail to link for
-          # the Intel simulator slice:
-          #   Undefined symbols for architecture x86_64:
+          # Xcode 26 does not ship the Swift 5.6 compatibility shims, and the Swift pods in
+          # this project (VisionCamera, lottie-ios, lottie-react-native) fail to link
+          # against it — for BOTH architectures, not just the Intel slice as the first
+          # failure suggested:
+          #   Undefined symbols for architecture arm64:
           #     "__swift_FORCE_LOAD_$_swiftCompatibility56", referenced from liblottie-ios.a
-          # The runner is Apple Silicon, so build the simulator slice for arm64 only.
           #
-          # ARCHS, not -arch: with a -destination present, xcodebuild refuses
-          # "destination implies architecture, architecture must not also be specified".
-          # So the simulator build does not pass -destination at all — -sdk
-          # iphonesimulator is sufficient for a `build` action and yields the same
-          # two-architecture product on 16.4. Scoped to 26.x on purpose: narrowing the
-          # universal artifact on 16.4 would be a silent change.
-          ARCH_SETTING=""
+          # That force-load is emitted when the deployment target predates the OS release
+          # that shipped the Swift 5.6 runtime, which is iOS 15.4. This project targets
+          # 15.1, so the shim is pulled in and cannot be found. On 26.x the deployment
+          # target is therefore raised to 15.4 as a build setting. Scoped to 26.x on
+          # purpose: raising it for everyone would drop iOS 15.1-15.3 support, which is
+          # the operator's call rather than a side effect of a toolchain experiment.
+          DEPLOY_SETTING=""
           case "${{ inputs.xcode_version }}" in
-            26.*) ARCH_SETTING="ARCHS=arm64" ;;
+            26.*) DEPLOY_SETTING="IPHONEOS_DEPLOYMENT_TARGET=15.4" ;;
           esac
           # Diagnostics: if a build fails on C++ headers (the first iOS run failed on
           # '<memory> file not found'), these lines say why without needing a 40-minute
@@ -214,7 +214,7 @@ jobs:
             -configuration "$XCODE_CONFIGURATION" \
             -sdk iphonesimulator \
             -derivedDataPath "$DD" \
-            $ARCH_SETTING \
+            $DEPLOY_SETTING \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
             ENABLE_USER_SCRIPT_SANDBOXING=NO \
             COMPILATION_CACHE_ENABLE_CACHING=YES \
@@ -246,6 +246,7 @@ jobs:
             COMPILATION_CACHE_ENABLE_CACHING=YES \
             COMPILATION_CACHE_CAS_PATH="$CAS" \
             COMPILATION_CACHE_ENABLE_DIAGNOSTIC_REMARKS=YES \
+            $DEPLOY_SETTING \
             archive
 
       - name: Package and checksum
