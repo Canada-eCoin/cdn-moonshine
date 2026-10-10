@@ -72,6 +72,13 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    permissions:
+      contents: read
+      # For actions/attest-build-provenance. These let the job mint a short-lived OIDC
+      # token and write an attestation — not a stored secret, and not a signing key.
+      # Nothing here can read a secret or push a commit.
+      id-token: write
+      attestations: write
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -135,6 +142,51 @@ jobs:
 
           ( cd "$TMP" && sha256sum ./*.apk | tee SHA256SUMS )
 
+          # --- artifact invariants -------------------------------------------------
+          # Checked against the artifacts rather than assumed, because these are exactly
+          # what docs/SIGNING.md makes promises about:
+          #   * the release APK must NOT be signed — otherwise an APK no store accepts,
+          #     and which nobody can re-sign without stripping it first, ships silently;
+          #   * the debug APK must be signed, or it cannot be installed anywhere.
+          # Identity values (applicationId, versionCode, SDK levels) are REPORTED, not
+          # asserted, so a deliberate version bump cannot fail the build — but drift is
+          # visible here instead of only in a document that still says `com.moonshine`.
+          CHECK="$(mktemp)"
+          BT="$(find "${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort -V | tail -1)"
+          echo "build-tools: ${BT:-not found}" >> "$CHECK"
+          # Fail loudly rather than letting a missing tool make the checks below pass or
+          # fail for the wrong reason.
+          if [ -z "$BT" ] || [ ! -x "$BT/apksigner" ]; then
+            echo "::error::apksigner not found under $ANDROID_HOME/build-tools — cannot verify the artifacts."
+            exit 1
+          fi
+
+          if [ -f "$TMP"/cdn-moonshine-*-release-unsigned.apk ]; then
+            REL="$(ls "$TMP"/cdn-moonshine-*-release-unsigned.apk)"
+            if "$BT/apksigner" verify --print-certs "$REL" >/dev/null 2>&1; then
+              echo "::error::the release APK verifies as SIGNED. It must be unsigned so whoever publishes can sign it with their own key — check for a signingConfig on the release buildType in android/app/build.gradle."
+              exit 1
+            fi
+            echo "release APK: unsigned (apksigner verify fails, as intended)" >> "$CHECK"
+            "$BT/aapt2" dump badging "$REL" 2>/dev/null \
+              | grep -E "^package:|^sdkVersion|^targetSdkVersion|^application-label:" \
+              | sed 's/^/release APK: /' >> "$CHECK" || true
+          fi
+
+          if [ -f "$TMP"/cdn-moonshine-*-debug.apk ]; then
+            DBG="$(ls "$TMP"/cdn-moonshine-*-debug.apk)"
+            if ! "$BT/apksigner" verify "$DBG" >/dev/null 2>&1; then
+              echo "::error::the debug APK does not verify as signed, so it cannot be installed. Check android/app/debug.keystore."
+              exit 1
+            fi
+            echo "debug APK: signed with the committed debug keystore (expected)" >> "$CHECK"
+            "$BT/aapt2" dump badging "$DBG" 2>/dev/null \
+              | grep -E "^package:|^sdkVersion|^targetSdkVersion" \
+              | sed 's/^/debug APK: /' >> "$CHECK" || true
+          fi
+
+          { echo; echo "### Artifact checks"; echo; echo '```'; cat "$CHECK"; echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
+
           {
             echo "### Build $BUILD_DATE ($SHORT_SHA)"
             echo
@@ -158,6 +210,19 @@ jobs:
 
           echo "artifacts_dir=$TMP" >> "$GITHUB_OUTPUT"
           ls -l "$TMP"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          # Signs a statement tying these exact files to this workflow, this commit and
+          # this run. Anyone can then check an APK against the repo:
+          #
+          #   gh attestation verify <file.apk> --repo Canada-eCoin/cdn-moonshine
+          #
+          # No key of yours is involved: the signature comes from a short-lived OIDC
+          # token and the public Sigstore infrastructure. This is what makes "download it
+          # and sign it yourself" checkable rather than a matter of trust.
+          subject-path: ${{ steps.stamp.outputs.artifacts_dir }}/*.apk
 
       - name: Attach APKs
         uses: actions/upload-artifact@v7

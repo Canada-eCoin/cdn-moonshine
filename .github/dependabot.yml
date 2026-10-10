@@ -1,0 +1,68 @@
+# Dependabot version updates.
+#
+# Why this exists: this repo sat five React Native majors behind without anyone
+# noticing — the JavaScript moved to 0.78 while the Podfile still called `use_flipper!`
+# and ios/Podfile.lock pinned React 0.63.3, so `pod install` could not even parse. A
+# weekly, grouped update PR is the cheapest way to stop that recurring silently.
+#
+# Dependabot opens PRs against master. Both build workflows are workflow_dispatch-only,
+# so an update PR starts nothing automatically — it sits until someone dispatches.
+#
+# NOTE ON COCOAPODS: Dependabot does not support the CocoaPods ecosystem (verified
+# against the supported-ecosystem list: cocoapods is absent). The iOS pods in
+# ios/Podfile.lock therefore cannot be tracked here. Two consequences:
+#   * pods move only when a podspec is re-resolved, which happens when their npm
+#     parents move — so the `npm` entry below is what indirectly moves them;
+#   * the three Swift pods that block Xcode 26 (react-native-vision-camera,
+#     lottie-react-native, lottie-ios) need a human to watch for compatible releases.
+#     Renovate supports CocoaPods if that ever becomes worth adding.
+#
+# Version RANGES in package.json bound what can be proposed: `react-native: ^0.78.0`
+# permits 0.78.x only, so no React Native minor/major jump will arrive as a PR. Those
+# stay deliberate, which is the intent.
+
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '13:00'
+      timezone: America/Toronto
+    open-pull-requests-limit: 5
+    groups:
+      # One PR for a pile of small bumps instead of twenty PRs.
+      npm-minor-patch:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+    commit-message:
+      prefix: 'chore(deps)'
+
+  - package-ecosystem: gradle
+    directory: /android
+    schedule:
+      interval: weekly
+      day: monday
+      time: '13:00'
+      timezone: America/Toronto
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: 'chore(deps)'
+
+  # Keeps the actions in .github/workflows current, which matters more than usual here:
+  # the pinned majors are the only thing standing between this repo and another
+  # retired-runtime surprise like the actions/*@v3 pins that came with it.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '13:00'
+      timezone: America/Toronto
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: 'chore(ci)'
