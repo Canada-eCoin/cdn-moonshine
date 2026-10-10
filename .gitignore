@@ -24,6 +24,11 @@ DerivedData
 # Android/IntelliJ
 #
 build/
+
+# The kingdom command convention puts commands at commands/<name>/command.sh, and this
+# repo's `build/` ignore pattern (above, for Xcode and Android output) swallowed
+# commands/build/ with it. Re-included explicitly.
+!commands/build/
 .idea
 .gradle
 local.properties
