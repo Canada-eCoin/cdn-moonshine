@@ -78,6 +78,13 @@ jobs:
     # React Native release expects.
     runs-on: macos-15
     timeout-minutes: 90
+    permissions:
+      contents: read
+      # For actions/attest-build-provenance. A short-lived OIDC token plus write access to
+      # this run's attestations — not a stored secret, not a signing key, and nothing that
+      # can read a secret or push a commit.
+      id-token: write
+      attestations: write
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -253,6 +260,7 @@ jobs:
             -configuration "$XCODE_CONFIGURATION" \
             -sdk iphonesimulator \
             -derivedDataPath "$DD" \
+            -resultBundlePath "$RUNNER_TEMP/simulator.xcresult" \
             $ARCH_SETTING \
             $DEPLOY_SETTING \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
@@ -289,6 +297,7 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -archivePath "$RUNNER_TEMP/moonshine.xcarchive" \
+            -resultBundlePath "$RUNNER_TEMP/archive.xcresult" \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
             CODE_SIGN_ENTITLEMENTS="" PROVISIONING_PROFILE_SPECIFIER="" DEVELOPMENT_TEAM="" \
             ENABLE_USER_SCRIPT_SANDBOXING=NO \
@@ -297,6 +306,71 @@ jobs:
             COMPILATION_CACHE_ENABLE_DIAGNOSTIC_REMARKS=YES \
             $DEPLOY_SETTING \
             archive
+
+      # The .app is built and then, everywhere else in this repo, never executed. A wallet
+      # whose bundle throws during launch — a ReferenceError from an unimported global,
+      # say, which is exactly the bug class Jest caught on 2026-10-09 — would otherwise
+      # ship unnoticed. The image carries iOS 18.x runtimes, so this is cheap.
+      - name: Boot the simulator app
+        if: inputs.artifacts != 'device-unsigned-only'
+        run: |
+          set -euo pipefail
+          APP="$(find "$HOME/dd/Build/Products/${XCODE_CONFIGURATION}-iphonesimulator" \
+                   -maxdepth 1 -name '*.app' -print -quit)"
+          if [ -z "$APP" ]; then
+            echo "::error::no simulator .app was produced to boot."
+            exit 1
+          fi
+          BUNDLE_ID="$(plutil -extract CFBundleIdentifier raw "$APP/Info.plist")"
+
+          UDID="$(xcrun simctl list devices available \
+                    | grep -E '^[[:space:]]+iPhone' | head -1 \
+                    | grep -oE '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}')"
+          if [ -z "$UDID" ]; then
+            echo "::error::no available iPhone simulator runtime on this image."
+            exit 1
+          fi
+
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl install "$UDID" "$APP"
+
+          LOG="$RUNNER_TEMP/simulator-console.log"
+          ( xcrun simctl launch --console-pty "$UDID" "$BUNDLE_ID" > "$LOG" 2>&1 ) &
+          LAUNCHER=$!
+          sleep 30
+
+          PROBLEMS=0
+          # A JS exception or a native crash shows up in the app's own console stream.
+          if grep -qiE 'Unhandled JS Exception|RCTFatal|ReferenceError|is not defined|Fatal error|NSInternalInconsistency' "$LOG"; then
+            echo "::error::the app logged a fatal error during launch:"
+            grep -iE 'Unhandled JS Exception|RCTFatal|ReferenceError|is not defined|Fatal error|NSInternalInconsistency' "$LOG" | head -20
+            PROBLEMS=1
+          fi
+          # And independently of the console: is it still running?
+          if ! xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep -q "$BUNDLE_ID"; then
+            echo "::error::the app is not running 30 seconds after launch — it did not survive startup."
+            PROBLEMS=1
+          fi
+          kill "$LAUNCHER" 2>/dev/null || true
+
+          if [ "$PROBLEMS" -ne 0 ]; then
+            echo '--- console log (last 60 lines) ---'
+            tail -60 "$LOG" || true
+            echo '--- recent simulator crash reports ---'
+            ls -t "$HOME/Library/Logs/DiagnosticReports"/*.ips 2>/dev/null | head -3 || echo '(none)'
+            exit 1
+          fi
+
+          {
+            echo "### Simulator smoke test"
+            echo
+            echo "\`$BUNDLE_ID\` launched on runtime \`$UDID\` and was still running after 30s."
+            echo
+            echo '```'
+            tail -15 "$LOG" || true
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Package and checksum
         id: stamp
@@ -330,6 +404,53 @@ jobs:
             echo "::error::Neither artifact was produced — see the xcodebuild output above."
             exit 1
           fi
+
+          # --- artifact invariants -------------------------------------------------
+          # Checked against the artifacts rather than assumed, because docs/SIGNING-iOS.md
+          # makes promises about them:
+          #   * the archive must be UNSIGNED — an archive carrying a signing identity would
+          #     mean an APK-style accident, where the artifact looks publishable but is tied
+          #     to somebody else's certificate;
+          #   * MinimumOSVersion must satisfy React Native 0.78's floor of iOS 15.1, or the
+          #     simulator build would install on a target the framework does not support.
+          # Bundle id and version are REPORTED, not asserted, so a deliberate version bump
+          # cannot fail the build — but drift is visible here rather than only in a doc that
+          # still says `com.kisswallet` and `0.4.0`.
+          CHECK="$RUNNER_TEMP/invariants.txt"
+          : > "$CHECK"
+
+          if [ -n "$APP" ] && [ -d "$APP" ]; then
+            BID="$(plutil -extract CFBundleIdentifier raw "$APP/Info.plist" 2>/dev/null || echo '')"
+            MKT="$(plutil -extract CFBundleShortVersionString raw "$APP/Info.plist" 2>/dev/null || echo '')"
+            BLD="$(plutil -extract CFBundleVersion raw "$APP/Info.plist" 2>/dev/null || echo '')"
+            MINOS="$(plutil -extract MinimumOSVersion raw "$APP/Info.plist" 2>/dev/null || echo '')"
+            echo "simulator .app: bundle id=$BID  version=$MKT ($BLD)  MinimumOSVersion=$MINOS" >> "$CHECK"
+
+            if [ -z "$MINOS" ]; then
+              echo "::error::could not read MinimumOSVersion from $APP/Info.plist"
+              exit 1
+            fi
+            if ! python3 -c "import sys; a=[int(x) for x in sys.argv[1].split('.')[:2]]; sys.exit(0 if tuple(a) >= (15, 1) else 1)" "$MINOS"; then
+              echo "::error::MinimumOSVersion is $MINOS, below the iOS 15.1 floor React Native 0.78 requires."
+              exit 1
+            fi
+          fi
+
+          ARCHINFO="$RUNNER_TEMP/moonshine.xcarchive/Info.plist"
+          if [ -f "$ARCHINFO" ]; then
+            SIGNID="$(plutil -extract SigningIdentity raw "$ARCHINFO" 2>/dev/null || echo '')"
+            if [ -n "$SIGNID" ]; then
+              echo "::error::the archive carries a signing identity ($SIGNID). It must be unsigned so whoever publishes can sign it with their own certificate."
+              exit 1
+            fi
+            echo "archive: unsigned (SigningIdentity empty, as intended)" >> "$CHECK"
+            if [ -f "$RUNNER_TEMP/moonshine.xcarchive/Products/Applications/Moonshine.app/Info.plist" ]; then
+              APPP="$RUNNER_TEMP/moonshine.xcarchive/Products/Applications/Moonshine.app/Info.plist"
+              echo "archive app: bundle id=$(plutil -extract CFBundleIdentifier raw "$APPP" 2>/dev/null)  MinimumOSVersion=$(plutil -extract MinimumOSVersion raw "$APPP" 2>/dev/null)" >> "$CHECK"
+            fi
+          fi
+
+          { echo; echo "### Artifact checks"; echo; echo '```'; cat "$CHECK"; echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
 
           # Report what the caches actually weigh, so the repo's 10 GB budget is
           # observable rather than assumed.
@@ -371,6 +492,32 @@ jobs:
 
           echo "out=$OUT" >> "$GITHUB_OUTPUT"
           ls -l "$OUT"
+
+      # A 20-minute iOS build that dies leaves nothing behind otherwise: the .xcresult
+      # holds the full build log, the failing command and the diagnostics, which is the
+      # difference between reading an answer and guessing at one.
+      - name: Upload build diagnostics (only on failure)
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-diagnostics-${{ env.BUILD_DATE }}-${{ env.SHORT_SHA }}
+          path: |
+            ${{ runner.temp }}/*.xcresult
+            ${{ runner.temp }}/simulator-console.log
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          # Ties these exact files to this workflow, this commit and this run. Anyone can
+          # then check an artifact against the repo:
+          #
+          #   gh attestation verify <file> --repo Canada-eCoin/cdn-moonshine
+          #
+          # Signed by a short-lived OIDC token and public Sigstore infrastructure — none
+          # of your keys. It is what makes "download it and sign it yourself" checkable.
+          subject-path: ${{ steps.stamp.outputs.out }}/*.zip
 
       - name: Attach artifacts
         uses: actions/upload-artifact@v7

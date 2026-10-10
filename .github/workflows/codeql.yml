@@ -1,0 +1,61 @@
+# CodeQL — free for public repositories.
+#
+# Scans the JavaScript and TypeScript that this wallet actually ships. That is the code
+# that parses address strings, builds transactions, handles mnemonics and talks to
+# electrum servers, so it is where an injection or a taint bug would matter.
+#
+# Why manual + weekly rather than on every push or PR: both build workflows in this repo
+# are workflow_dispatch-only by design, so that nothing runs unless somebody asks. A
+# weekly scan respects that while still catching drift, and a scan is not a build. If you
+# want it on PRs, add:
+#
+#   pull_request:
+#     branches: [master]
+#
+# which is safe for CodeQL specifically — it is built to analyse untrusted code — but it
+# would then run on every PR Dependabot opens.
+#
+# Languages deliberately NOT scanned:
+#   * java-kotlin — the Android tree is a React Native shell; almost no first-party Java
+#     or Kotlin, and the scan needs a full Gradle build.
+#   * swift — not available on free public-repo CodeQL.
+
+name: CodeQL
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Mondays, 06:23 UTC. Odd minute on purpose: GitHub's scheduler is busiest on the
+    # hour, and scheduled runs queue behind that.
+    - cron: '23 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze JavaScript/TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      # Required to upload results. `security-events: write` only lets this job write
+      # findings for this repository — it grants no code or secret access.
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript
+          # No compilation step: CodeQL reads the source for JS/TS. Avoids dragging in
+          # yarn install and metro for a scan that does not need them.
+          build-mode: none
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: '/language:javascript-typescript'
