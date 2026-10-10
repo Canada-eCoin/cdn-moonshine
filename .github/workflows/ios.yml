@@ -19,6 +19,12 @@
 #
 # Cost note: macOS runners bill at 10x for private repos, but this repo is public, so
 # these runs are free.
+#
+# Toolchain: the `xcode_version` input defaults to 16.4 (the Xcode 16.x line React Native
+# 0.78 targets). 26.3 exists as a second option because Xcode's compilation cache — a
+# content-addressed cache that, unlike the DerivedData cache, is still valid for unchanged
+# sources — only exists in Xcode 26 and later. Whether these 230 pods compile under
+# Xcode 26 at all has to be established before it could become the default.
 
 name: iOS build (manual)
 
@@ -33,6 +39,13 @@ on:
           - simulator-only
           - device-unsigned-only
         default: both
+      xcode_version:
+        description: Xcode toolchain (26.x is required for the compilation cache)
+        type: choice
+        options:
+          - '16.4'
+          - '26.3'
+        default: '16.4'
 
 permissions:
   contents: read
@@ -43,15 +56,18 @@ concurrency:
 
 env:
   NODE_VERSION: '22'
-  # React Native 0.78 targets the Xcode 16.x line. macos-15's *default* is 16.4 today,
-  # but the image also carries 16.0-16.3 and the 26.x line, and `macos-latest` has
-  # already moved to macOS 26 — so the version is selected explicitly rather than
-  # inherited.
-  XCODE_VERSION: '16.4'
   # Release embeds the JS bundle, so the resulting .app runs without a Metro packager.
   # A Debug simulator build would need `react-native start` beside it to be useful.
   XCODE_CONFIGURATION: 'Release'
   SCHEME: 'moonshine'
+  # Xcode's compilation cache (LLVM CAS) is a CONTENT-ADDRESSED cache: it keys on input
+  # hashes, not timestamps, which is what the DerivedData cache cannot do — a fresh
+  # checkout makes every source file newer than the cached objects, so Xcode rebuilds all
+  # ~2800 of them regardless. Two caveats: the feature landed in Xcode 26, and React
+  # Native 0.78 targets the Xcode 16.x line. So the toolchain is an explicit input,
+  # defaulting to the known-good 16.4; 26.3 is the opt-in experiment, and it needs to be
+  # shown that these pods compile under it at all before it becomes the default.
+  COMPILATION_CACHE_DIR: 'compilation-cache'
 
 jobs:
   build:
@@ -67,7 +83,7 @@ jobs:
       - name: Select Xcode and report toolchain
         run: |
           set -euo pipefail
-          sudo xcode-select -s "/Applications/Xcode_${XCODE_VERSION}.app"
+          sudo xcode-select -s "/Applications/Xcode_${{ inputs.xcode_version }}.app"
           {
             echo "### Toolchain"
             echo
@@ -77,7 +93,7 @@ jobs:
             echo "ruby: $(ruby --version)"
             echo "node: $(node --version)"
             echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -116,9 +132,21 @@ jobs:
           # ends up. Build/Products (linked .app bundles and dSYMs) is regenerated
           # cheaply and is what would blow the repo's 10 GB cache budget.
           path: ~/dd/Build/Intermediates.noindex
-          key: ios-intermediates-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-${{ hashFiles('ios/Podfile.lock') }}
+          key: ios-intermediates-${{ runner.os }}-xcode${{ inputs.xcode_version }}-${{ hashFiles('ios/Podfile.lock') }}
           restore-keys: |
-            ios-intermediates-${{ runner.os }}-xcode${{ env.XCODE_VERSION }}-
+            ios-intermediates-${{ runner.os }}-xcode${{ inputs.xcode_version }}-
+
+      # Xcode's compilation cache. Content-addressed, so — unlike the DerivedData cache
+      # above — a restored entry is still *correct* for unchanged sources. On Xcode 16.4
+      # the settings are simply unrecognised and nothing is written; the size report in
+      # the packaging step makes that visible rather than silently pretending to cache.
+      - name: Restore compilation cache
+        uses: actions/cache@v6
+        with:
+          path: ~/compilation-cache
+          key: xcode-compilation-cache-${{ runner.os }}-xcode${{ inputs.xcode_version }}-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: |
+            xcode-compilation-cache-${{ runner.os }}-xcode${{ inputs.xcode_version }}-
 
       # ios/Podfile.lock is committed, so this install is pinned. It is NOT run with
       # --deployment yet, which means CocoaPods will quietly update the lock if a podspec
@@ -140,6 +168,8 @@ jobs:
           # `<cwd>/$HOME/dd` and a ModuleCache path mismatch. A stable path is required
           # because this directory is what the DerivedData cache stores.
           DD="$HOME/dd"
+          CAS="$HOME/$COMPILATION_CACHE_DIR"
+          mkdir -p "$CAS"
           # Diagnostics: if a build fails on C++ headers (the first iOS run failed on
           # '<memory> file not found'), these lines say why without needing a 40-minute
           # rebuild. Teed to stdout as well as the summary so they are readable from
@@ -150,7 +180,7 @@ jobs:
             echo '```'
             xcodebuild -workspace ios/moonshine.xcworkspace -scheme "$SCHEME" \
               -configuration "$XCODE_CONFIGURATION" -showBuildSettings 2>/dev/null \
-              | grep -E "CLANG_CXX_LANGUAGE_STANDARD|CLANG_CXX_LIBRARY|CLANG_ENABLE_MODULES|SWIFT_ENABLE_EXPLICIT_MODULES|_EXPERIMENTAL_SWIFT_EXPLICIT|IPHONEOS_DEPLOYMENT_TARGET|ENABLE_USER_SCRIPT_SANDBOXING" \
+              | grep -E "CLANG_CXX_LANGUAGE_STANDARD|CLANG_CXX_LIBRARY|CLANG_ENABLE_MODULES|SWIFT_ENABLE_EXPLICIT_MODULES|_EXPERIMENTAL_SWIFT_EXPLICIT|IPHONEOS_DEPLOYMENT_TARGET|ENABLE_USER_SCRIPT_SANDBOXING|COMPILATION_CACHE" \
               | sort -u
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
@@ -164,6 +194,9 @@ jobs:
             -derivedDataPath "$DD" \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
             ENABLE_USER_SCRIPT_SANDBOXING=NO \
+            COMPILATION_CACHE_ENABLE_CACHING=YES \
+            COMPILATION_CACHE_CAS_PATH="$CAS" \
+            COMPILATION_CACHE_ENABLE_DIAGNOSTIC_REMARKS=YES \
             build
 
       - name: Build unsigned device archive
@@ -171,8 +204,12 @@ jobs:
         run: |
           set -euo pipefail
           # Same DerivedData as the simulator build, so the two share the cached
-          # intermediates and the device compile is incremental.
+          # intermediates and the device compile is incremental. Same compilation cache
+          # too: content-addressed, so the simulator's artifacts can serve the device
+          # build for anything architecture-independent.
           DD="$HOME/dd"
+          CAS="$HOME/$COMPILATION_CACHE_DIR"
+          mkdir -p "$CAS"
           xcodebuild \
             -workspace ios/moonshine.xcworkspace \
             -scheme "$SCHEME" \
@@ -183,6 +220,9 @@ jobs:
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
             CODE_SIGN_ENTITLEMENTS="" PROVISIONING_PROFILE_SPECIFIER="" DEVELOPMENT_TEAM="" \
             ENABLE_USER_SCRIPT_SANDBOXING=NO \
+            COMPILATION_CACHE_ENABLE_CACHING=YES \
+            COMPILATION_CACHE_CAS_PATH="$CAS" \
+            COMPILATION_CACHE_ENABLE_DIAGNOSTIC_REMARKS=YES \
             archive
 
       - name: Package and checksum
@@ -226,6 +266,7 @@ jobs:
             echo '```'
             du -sh "$HOME/dd/Build/Intermediates.noindex" 2>/dev/null || echo "no DerivedData"
             du -sh "$HOME/Library/Caches/CocoaPods" 2>/dev/null || echo "no CocoaPods cache"
+            du -sh "$HOME/$COMPILATION_CACHE_DIR" 2>/dev/null || echo "no compilation cache"
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
