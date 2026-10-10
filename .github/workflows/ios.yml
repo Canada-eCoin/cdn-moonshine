@@ -273,6 +273,15 @@ jobs:
           DD="$HOME/dd"
           CAS="$HOME/$COMPILATION_CACHE_DIR"
           mkdir -p "$CAS"
+          # Defined here as well as in the simulator step, and it must be: with `set -u`
+          # an unset variable is fatal, and referencing the simulator step's copy made
+          # this step die instantly — which broke the default 16.4 device archive, the
+          # artifact that actually gets published. The device build needs the raised
+          # deployment target for the same Swift-shim reason on 26.x.
+          DEPLOY_SETTING=""
+          case "${{ inputs.xcode_version }}" in
+            26.*) DEPLOY_SETTING="IPHONEOS_DEPLOYMENT_TARGET=15.4" ;;
+          esac
           xcodebuild \
             -workspace ios/moonshine.xcworkspace \
             -scheme "$SCHEME" \
