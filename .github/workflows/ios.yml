@@ -143,7 +143,12 @@ jobs:
       - name: Restore compilation cache
         uses: actions/cache@v6
         with:
-          path: ~/compilation-cache
+          # Two candidate locations: Xcode supplies its own default CAS path under
+          # DerivedData, and it is not clear from the documentation whether an explicit
+          # COMPILATION_CACHE_CAS_PATH overrides it. The size report says which one filled.
+          path: |
+            ~/compilation-cache
+            ~/dd/CompilationCache.noindex
           key: xcode-compilation-cache-${{ runner.os }}-xcode${{ inputs.xcode_version }}-${{ hashFiles('ios/Podfile.lock') }}
           restore-keys: |
             xcode-compilation-cache-${{ runner.os }}-xcode${{ inputs.xcode_version }}-
@@ -170,6 +175,18 @@ jobs:
           DD="$HOME/dd"
           CAS="$HOME/$COMPILATION_CACHE_DIR"
           mkdir -p "$CAS"
+          # Xcode 26 dropped the Swift 5.6 compatibility shims for x86_64, so Swift pods
+          # (VisionCamera, lottie-ios, lottie-react-native) compile but fail to link for
+          # the Intel simulator slice:
+          #   Undefined symbols for architecture x86_64:
+          #     "__swift_FORCE_LOAD_$_swiftCompatibility56", referenced from liblottie-ios.a
+          # The runner is Apple Silicon, so build the simulator slice for arm64 only.
+          # Scoped to 26.x on purpose: on 16.4 the two-architecture build still links, and
+          # narrowing it there would silently make the artifact Apple-Silicon-only.
+          ARCH_FLAGS=""
+          case "${{ inputs.xcode_version }}" in
+            26.*) ARCH_FLAGS="-arch arm64" ;;
+          esac
           # Diagnostics: if a build fails on C++ headers (the first iOS run failed on
           # '<memory> file not found'), these lines say why without needing a 40-minute
           # rebuild. Teed to stdout as well as the summary so they are readable from
@@ -179,7 +196,10 @@ jobs:
             echo
             echo '```'
             xcodebuild -workspace ios/moonshine.xcworkspace -scheme "$SCHEME" \
-              -configuration "$XCODE_CONFIGURATION" -showBuildSettings 2>/dev/null \
+              -configuration "$XCODE_CONFIGURATION" -derivedDataPath "$DD" \
+              COMPILATION_CACHE_ENABLE_CACHING=YES \
+              COMPILATION_CACHE_CAS_PATH="$CAS" \
+              -showBuildSettings 2>/dev/null \
               | grep -E "CLANG_CXX_LANGUAGE_STANDARD|CLANG_CXX_LIBRARY|CLANG_ENABLE_MODULES|SWIFT_ENABLE_EXPLICIT_MODULES|_EXPERIMENTAL_SWIFT_EXPLICIT|IPHONEOS_DEPLOYMENT_TARGET|ENABLE_USER_SCRIPT_SANDBOXING|COMPILATION_CACHE" \
               | sort -u
             echo '```'
@@ -192,6 +212,7 @@ jobs:
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath "$DD" \
+            $ARCH_FLAGS \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
             ENABLE_USER_SCRIPT_SANDBOXING=NO \
             COMPILATION_CACHE_ENABLE_CACHING=YES \
@@ -266,7 +287,9 @@ jobs:
             echo '```'
             du -sh "$HOME/dd/Build/Intermediates.noindex" 2>/dev/null || echo "no DerivedData"
             du -sh "$HOME/Library/Caches/CocoaPods" 2>/dev/null || echo "no CocoaPods cache"
-            du -sh "$HOME/$COMPILATION_CACHE_DIR" 2>/dev/null || echo "no compilation cache"
+            for d in "$HOME/$COMPILATION_CACHE_DIR" "$HOME/dd/CompilationCache.noindex"; do
+              [ -e "$d" ] && du -sh "$d" || echo "absent: $d"
+            done
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
