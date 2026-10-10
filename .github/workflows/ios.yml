@@ -143,12 +143,10 @@ jobs:
       - name: Restore compilation cache
         uses: actions/cache@v6
         with:
-          # Two candidate locations: Xcode supplies its own default CAS path under
-          # DerivedData, and it is not clear from the documentation whether an explicit
-          # COMPILATION_CACHE_CAS_PATH overrides it. The size report says which one filled.
-          path: |
-            ~/compilation-cache
-            ~/dd/CompilationCache.noindex
+          # Xcode's own CAS default lives under DerivedData, but the diagnostics proved
+          # the explicit COMPILATION_CACHE_CAS_PATH is honoured (it resolved to
+          # /Users/runner/compilation-cache), so one path is enough.
+          path: ~/compilation-cache
           key: xcode-compilation-cache-${{ runner.os }}-xcode${{ inputs.xcode_version }}-${{ hashFiles('ios/Podfile.lock') }}
           restore-keys: |
             xcode-compilation-cache-${{ runner.os }}-xcode${{ inputs.xcode_version }}-
@@ -181,11 +179,16 @@ jobs:
           #   Undefined symbols for architecture x86_64:
           #     "__swift_FORCE_LOAD_$_swiftCompatibility56", referenced from liblottie-ios.a
           # The runner is Apple Silicon, so build the simulator slice for arm64 only.
-          # Scoped to 26.x on purpose: on 16.4 the two-architecture build still links, and
-          # narrowing it there would silently make the artifact Apple-Silicon-only.
-          ARCH_FLAGS=""
+          #
+          # ARCHS, not -arch: with a -destination present, xcodebuild refuses
+          # "destination implies architecture, architecture must not also be specified".
+          # So the simulator build does not pass -destination at all — -sdk
+          # iphonesimulator is sufficient for a `build` action and yields the same
+          # two-architecture product on 16.4. Scoped to 26.x on purpose: narrowing the
+          # universal artifact on 16.4 would be a silent change.
+          ARCH_SETTING=""
           case "${{ inputs.xcode_version }}" in
-            26.*) ARCH_FLAGS="-arch arm64" ;;
+            26.*) ARCH_SETTING="ARCHS=arm64" ;;
           esac
           # Diagnostics: if a build fails on C++ headers (the first iOS run failed on
           # '<memory> file not found'), these lines say why without needing a 40-minute
@@ -210,9 +213,8 @@ jobs:
             -scheme "$SCHEME" \
             -configuration "$XCODE_CONFIGURATION" \
             -sdk iphonesimulator \
-            -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath "$DD" \
-            $ARCH_FLAGS \
+            $ARCH_SETTING \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
             ENABLE_USER_SCRIPT_SANDBOXING=NO \
             COMPILATION_CACHE_ENABLE_CACHING=YES \
