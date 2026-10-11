@@ -31,10 +31,29 @@ end
 target 'moonshine' do
   config = use_native_modules!
 
+  # INTERIM: iOS runs on the LEGACY architecture, deliberately, and this is the only
+  # thing standing between the app and a launch crash.
+  #
+  # The iOS entry point is still the React Native 0.63-era one — RCTBridge + RCTRootView
+  # in AppDelegate.mm. Under the new architecture RNBootSplash requires a surface-hosting
+  # root view and dies on launch:
+  #
+  #   *** Terminating app due to uncaught exception 'NSInvalidArgumentException',
+  #       reason: '-[RCTRootView disableActivityIndicatorAutoHide:]: unrecognized selector'
+  #
+  # (upstream zoontek/react-native-bootsplash#794 — and 7.3.4 still requires the
+  # surface-hosting view, so upgrading the library does not help). Found by the simulator
+  # smoke test on 2026-10-10, having been latent since the June 2025 upgrade turned the new
+  # architecture on without touching the entry point.
+  #
+  # The legacy architecture is what this entry point actually implements, so turning it off
+  # makes the two consistent. Android keeps the new architecture — its MainApplication.kt is
+  # the modern one. Re-enable here once AppDelegate is migrated to RCTReactNativeFactory.
   use_react_native!(
     :path => config[:reactNativePath],
     # Absolute path to the application root, used by codegen for the new architecture.
-    :app_path => "#{Pod::Config.instance.installation_root}/.."
+    :app_path => "#{Pod::Config.instance.installation_root}/..",
+    :new_arch_enabled => false
   )
 
   target 'moonshineTests' do

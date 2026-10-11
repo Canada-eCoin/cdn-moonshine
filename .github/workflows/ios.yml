@@ -438,12 +438,14 @@ jobs:
 
           ARCHINFO="$RUNNER_TEMP/moonshine.xcarchive/Info.plist"
           if [ -f "$ARCHINFO" ]; then
-            SIGNID="$(plutil -extract SigningIdentity raw "$ARCHINFO" 2>/dev/null || echo '')"
-            if [ -n "$SIGNID" ]; then
+            # plutil writes its error to STDOUT, not stderr, so an absent key looks like a
+            # non-empty value. Branch on the exit status, not on emptiness — an archive with
+            # no SigningIdentity key at all is the unsigned case, which is what we want.
+            if SIGNID="$(plutil -extract SigningIdentity raw "$ARCHINFO" 2>/dev/null)" && [ -n "$SIGNID" ]; then
               echo "::error::the archive carries a signing identity ($SIGNID). It must be unsigned so whoever publishes can sign it with their own certificate."
               exit 1
             fi
-            echo "archive: unsigned (SigningIdentity empty, as intended)" >> "$CHECK"
+            echo "archive: unsigned (no SigningIdentity, as intended)" >> "$CHECK"
             if [ -f "$RUNNER_TEMP/moonshine.xcarchive/Products/Applications/Moonshine.app/Info.plist" ]; then
               APPP="$RUNNER_TEMP/moonshine.xcarchive/Products/Applications/Moonshine.app/Info.plist"
               echo "archive app: bundle id=$(plutil -extract CFBundleIdentifier raw "$APPP" 2>/dev/null)  MinimumOSVersion=$(plutil -extract MinimumOSVersion raw "$APPP" 2>/dev/null)" >> "$CHECK"
