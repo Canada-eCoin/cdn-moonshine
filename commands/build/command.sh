@@ -207,6 +207,7 @@ cmd_js() {
 cmd_android() {
 	local variant="${1:-debug}"
 	with_java
+	resolve_find
 	[[ -d "$ANDROID_DIR" ]] || die "no android/ directory"
 
 	bold "Android build ($variant) on JDK $(java_major "$JAVA_HOME")"
@@ -307,33 +308,67 @@ cmd_ios() {
 
 # ------------------------------------------------------------------------------- all ----
 
-# Local Metro bundling does not work in this environment, and it is not an RN-version
-# problem. Measured 2026-10-10: `npx react-native bundle --entry-file index.js` fails with
-# "Unable to resolve module react" — the plainest possible bare specifier — and the SAME
-# failure occurs on master with React Native 0.78.2 / metro 0.81.5, so it predates the
-# 0.79 upgrade. Ruled out along the way: package-exports resolution, a stale Metro cache,
-# mixed metro patch versions, an empty resolver.nodeModulesPaths, symlinked paths, and a
-# dotfile entry name. CI bundles fine, so the bundler remains the authority for that step.
+# Metro's file crawler shells out to `find` — it logs "Using system find: true" — and on
+# this kingdom `find` in PATH is the kingdom-safe wrapper, which prunes node_modules
+# before traversal. The crawler therefore returns ~326 files (the project, no
+# dependencies), every bare specifier fails to resolve, and the failure reads exactly
+# like a broken bundler.
 #
-# Consequence for this builder: `android debug` is meaningful (debug builds do not bundle
-# JS at all — they load it from the dev server), but a RELEASE build will fail here at
-# createBundleReleaseJsAndAssets until this is understood. It is reported rather than
-# hidden, because a green local build that means less than it appears is worse than none.
+# Measured 2026-10-30: the crawler reported 326 files against a node_modules holding
+# ~100k. `find node_modules -maxdepth 1 -type d` returns 0 entries through the wrapper
+# and 789 through /usr/bin/find. With the system binary first in PATH the release bundle
+# builds in 18s and contains the app graph.
+#
+# That also explains the earlier "reproducible on 0.78.2 and 0.79" observation: it was
+# never version-related, and CI was never special — CI simply has a normal `find`.
+#
+# The wrapper is correct for agent searches and wrong for a build tool, so this puts the
+# system binary first for the rest of the run rather than asking every operator to
+# remember PATH.
+resolve_find() {
+	local probe="$REPO/node_modules"
+	[[ -d "$probe" ]] || return 0
+	# maxdepth 0 prints the directory itself; a wrapper that prunes it prints nothing.
+	if [[ -z "$(find "$probe" -maxdepth 0 2>/dev/null)" ]]; then
+		local shim="${TMPDIR:-/tmp}/koad-build-realfind"
+		mkdir -p "$shim"
+		ln -sf /usr/bin/find "$shim/find"
+		export PATH="$shim:$PATH"
+		warn "PATH 'find' prunes node_modules (kingdom-safe wrapper) — using /usr/bin/find"
+		info "  Metro's crawler shells out to find; without this it sees only project files"
+	fi
+}
+
 cmd_bundle() {
-	bold "JS bundle (Metro)"
-	warn "known-broken locally: Metro cannot resolve bare specifiers in this environment"
-	info "  evidence: 'Unable to resolve module react', reproducible on master (RN 0.78.2 /"
-	info "  metro 0.81.5) as well as on the 0.79 branch, so it is not version-related"
-	info ""
-	info "  the release APK therefore cannot be built locally either, because that is the"
-	info "  path which bundles JS. CI bundles it correctly — use:"
-	info "    $0 ios --dispatch        (also builds Android release in the other workflow)"
-	info "    gh workflow run \"Android build (manual)\" --ref \$(git rev-parse --abbrev-ref HEAD)"
-	return 3
+	resolve_find
+	bold "JS bundle (Metro, release mode)"
+	local out="${TMPDIR:-/tmp}/koad-js-bundle"
+	rm -rf "$out"
+	mkdir -p "$out"
+	info "index.js -> $out/index.android.bundle"
+	( cd "$REPO" && npx react-native bundle \
+		--platform android \
+		--dev false \
+		--entry-file index.js \
+		--bundle-output "$out/index.android.bundle" \
+		--assets-dest "$out/assets" )
+	[[ -s "$out/index.android.bundle" ]] || die "bundle output missing or empty"
+	ok "bundle written ($(wc -c < "$out/index.android.bundle") bytes)"
+
+	# A bundle that resolved nothing can still exit 0. Check the app is actually in it,
+	# and that assets were collected, so this step cannot go quietly hollow again.
+	local marker
+	for marker in AppRegistry coincore; do
+		grep -q "$marker" "$out/index.android.bundle" \
+			|| die "bundle is missing '$marker' — module resolution failed again"
+	done
+	[[ -n "$(ls -A "$out/assets" 2>/dev/null)" ]] || die "no assets were copied"
+	ok "bundle contains the app graph and assets"
 }
 
 cmd_all() {
 	cmd_js
+	cmd_bundle
 	cmd_android debug
 }
 
@@ -350,9 +385,9 @@ $(bold "subcommands")
   android [variant]   debug (default) | release | both | clean — then artifact checks
   ios-deps            why pod resolution cannot be checked locally (CocoaPods is macOS-only)
   ios                 why this cannot be local; --dispatch to run it on GitHub
-  bundle              why Metro bundling cannot run here (so release needs CI)
-  verify              js + android debug — the "is this branch sane" command
-  all                 js + android debug
+  bundle              release JS bundle (Metro) — the step a release APK needs
+  verify              js + bundle + android debug — the "is this branch sane" command
+  all                 js + bundle + android debug
 
 $(bold "notes")
   * nothing here needs sudo; Java comes from Android Studio's bundled JBR
@@ -369,7 +404,7 @@ case "${1:-}" in
 	bundle)    cmd_bundle ;;
 	ios-deps)  cmd_ios_deps ;;
 	ios)       shift; cmd_ios "$@" ;;
-	verify)    cmd_js; cmd_android debug ;;
+	verify)    cmd_js; cmd_bundle; cmd_android debug ;;
 	all)       cmd_all ;;
 	""|-h|--help|help) usage ;;
 	*)         die "unknown subcommand '$1' (run with no arguments for usage)" ;;
