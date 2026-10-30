@@ -35,17 +35,22 @@
 #                   which is exactly what CI does first.
 #
 # Anything left after that is blocked on a parent, not on us: sharp (pinned by
-# react-native-bootsplash at ^0.32), image-size (metro wants ^1.0.2, the fix is 2.x),
-# uuid 7 (xcode wants ^7.0.3, the fix is 11.x), node-fetch 1 (isomorphic-fetch wants
-# ^1.0.1, the fix is 2.6.7), fast-xml-parser 4 (the RN CLI wants ^4, the fix is 5.7.0),
-# babel-traverse 6 (the babel 6 helper chain; the fix is 7.x, i.e. retiring those
-# plugins), and deepmerge and elliptic, which have no patched release at all. Those need
-# the parent upgraded first; forcing them with `resolutions` would trade a dependency
-# advisory for a broken build.
+# react-native-bootsplash at ^0.32 — bootsplash 7 needs RN 0.80+), image-size (metro
+# wants ^1.0.2, the fix is 2.x), uuid 7 (xcode wants ^7.0.3, the fix is 11.x),
+# node-fetch 1 (isomorphic-fetch wants ^1.0.1, the fix is 2.6.7), fast-xml-parser 4
+# (the RN CLI wants ^4, the fix is 5.7.0), and deepmerge and elliptic, which have no
+# patched release at all. Those need the parent upgraded first; forcing them with
+# `resolutions` would trade a dependency advisory for a broken build. Every one of the
+# first four is unlocked by the React Native upgrade, which is where they should land.
 #
-# Recorded 2026-10-30: 101 open advisories -> 11 after the sweep above. The number moves
-# on its own — Dependabot re-scanned when the first five PRs landed and added eight more
-# advisories — so recount before quoting this figure.
+# PINNED DIRECT DEPS. `react-native-svg` is pinned to 15.12.0 in package.json, not a
+# range: 15.16 calls `codegenNativeComponent` from the react-native root export, and
+# RN 0.79 does not export it there (it is only an internal path), so 15.16 breaks jest
+# and would break the app. Move it with the RN upgrade, not before.
+#
+# Recorded 2026-10-30: 101 open advisories -> 10 (the babel 6 tree removed here took
+# the last critical). The number moves on its own — Dependabot re-scanned when the
+# first five PRs landed and added eight more — so recount before quoting this figure.
 
 version: 2
 updates:
