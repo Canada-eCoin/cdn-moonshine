@@ -11,4 +11,10 @@
         <item name="android:background">@drawable/background_splash</item>
     </style>
 
+    <!-- react-native-bootsplash 7: the theme the splash is inflated from. The library
+         provides Theme.BootSplash; the background comes from our existing color. -->
+    <style name="BootTheme" parent="Theme.BootSplash">
+        <item name="darkContentBarsStyle">true</item>
+    </style>
+
 </resources>

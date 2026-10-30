@@ -30,15 +30,13 @@ jest.mock('./src/utils/ecoincore', () => ({
 }));
 
 // --- native modules with no JS fallback ---
-jest.mock('react-native-bootsplash', () => ({
-	hide: jest.fn(() => Promise.resolve()),
-	show: jest.fn(() => Promise.resolve()),
-	useHideAnimation: () => ({ containerStyle: {}, logoStyle: {}, brandStyle: {} }),
-}));
-
-jest.mock('react-native-touch-id', () => ({
-	authenticate: jest.fn(() => Promise.resolve(true)),
-	isSupported: jest.fn(() => Promise.resolve(true)),
+jest.mock('react-native-biometrics', () => ({
+	__esModule: true,
+	default: class {
+		isSensorAvailable() { return Promise.resolve({ available: false }); }
+		simplePrompt() { return Promise.resolve({ success: false }); }
+	},
+	BiometryTypes: { TouchID: 'TouchID', FaceID: 'FaceID', Biometrics: 'Biometrics' },
 }));
 
 jest.mock('react-native-keychain', () => ({
@@ -69,6 +67,16 @@ jest.mock('react-native-randombytes', () => ({
 	randomBytes: (n, cb) => cb(null, Buffer.alloc(n)),
 }));
 
+// bootsplash 7 is native: hide() is the only call the app makes on mount.
+jest.mock('react-native-bootsplash', () => ({
+	__esModule: true,
+	default: {
+		hide: jest.fn(() => Promise.resolve()),
+		show: jest.fn(() => Promise.resolve()),
+		isVisible: () => false,
+	},
+}));
+
 // --- native-backed view components: render children, nothing else ---
 const passthrough = (name) => {
 	const React = require('react');
@@ -82,8 +90,6 @@ jest.mock('react-native-linear-gradient', () => passthrough('LinearGradient'));
 jest.mock('react-native-modal', () => passthrough('Modal'));
 jest.mock('@react-native-community/slider', () => passthrough('Slider'));
 
-jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
-
 // vision-camera reaches for the TurboModule registry at import time and cannot run in
 // Node at all. Mirrors the hooks src/components/Camera.tsx actually calls.
 jest.mock('react-native-vision-camera', () => ({
@@ -96,19 +102,3 @@ jest.mock('react-native-vision-camera', () => ({
 // lottie parses animation JSON via a native driver.
 jest.mock('lottie-react-native', () => passthrough('LottieView'));
 
-// React Native 0.78's jest setup no longer provides
-// InteractionManager.runAfterInteractions, but src/components/App.js uses it in its
-// async componentDidMount (after a 100ms `pauseExecution`) to defer the biometrics
-// check until launch animations settle. Shim it the way the runtime behaves so that
-// flow can be exercised instead of throwing halfway through.
-{
-	const { InteractionManager } = require('react-native');
-	if (typeof InteractionManager.runAfterInteractions !== 'function') {
-		InteractionManager.runAfterInteractions = (task) => {
-			const handle = setTimeout(() => task && task(), 0);
-			return { cancel: () => clearTimeout(handle) };
-		};
-		InteractionManager.clearInteractionHandle = jest.fn();
-		InteractionManager.createInteractionHandle = jest.fn(() => 1);
-	}
-}

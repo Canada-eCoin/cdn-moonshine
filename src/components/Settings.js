@@ -11,7 +11,6 @@ import {
 	FlatList,
 	Keyboard
 } from 'react-native';
-import Animated from "react-native-reanimated";
 import { Easing } from "react-native";
 import PropTypes from "prop-types";
 import { systemWeights } from "react-native-typography";
@@ -252,7 +251,7 @@ class Settings extends PureComponent {
 
 							//Construct and push each animation to the animations array.
 							animations.push(
-								Animated.timing(
+								RNAnimated.timing(
 									this.state[opacityId],
 									{
 										toValue: display ? 1 : 0,

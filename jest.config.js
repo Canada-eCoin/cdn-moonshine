@@ -1,10 +1,10 @@
 /**
- * `preset: 'react-native'` supplies the transform, moduleNameMapper and the RN jest
+ * `@react-native/jest-preset` supplies the transform, moduleNameMapper and the RN jest
  * setup file (which installs the platform/native mocks). Setting `setupFiles` here
  * REPLACES the preset's array rather than appending to it, so the preset's entries
  * are merged back in explicitly before adding ours.
  */
-const rnPreset = require('react-native/jest-preset');
+const rnPreset = require('@react-native/jest-preset');
 
 // The RN preset only whitelists react-native itself. Several of this app's
 // dependencies ship ES modules, which Jest cannot parse unless they are transformed:
@@ -15,7 +15,7 @@ const transformAllowlist =
 	'(?:(?:jest-)?react-native|@react-native[^/]*|react-redux|redux[^/]*|@reduxjs|reselect|immer|styled-components|@meteorrn|bitcoinjs-lib|bitcoin-units|tiny-secp256k1|bip32|bip38|bip39|wif|bech32|uuid|nanoid|query-string|strict-uri-encode|decode-uri-component|split-on-first|filter-obj)';
 
 module.exports = {
-	preset: 'react-native',
+	preset: '@react-native/jest-preset',
 	setupFiles: [...(rnPreset.setupFiles || []), '<rootDir>/jest.setup.js'],
 	testMatch: ['<rootDir>/__tests__/**/*.js'],
 	moduleNameMapper: {

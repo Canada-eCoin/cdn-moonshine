@@ -1,16 +1,15 @@
 package com.moonshine;
 
+import android.os.Bundle;
 import com.facebook.react.ReactActivity;
 import com.zoontek.rnbootsplash.RNBootSplash;
-import android.os.Bundle;
-import com.moonshine.R;
 
 public class MainActivity extends ReactActivity {
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
+    RNBootSplash.init(this, R.style.BootTheme);
     super.onCreate(savedInstanceState);
-    RNBootSplash.init(MainActivity.this, R.drawable.bootsplash);
   }
 
   /**
