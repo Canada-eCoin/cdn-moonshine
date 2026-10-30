@@ -123,6 +123,13 @@ const connectToPeer = ({ port = 50002, host = "", protocol = "ssl", coin = "bitc
 						}, electrumKeepAliveInterval);
 					} catch (e) {}
 					clients.peer[coin] = { port, host, protocol };
+					// connect() resolves with no value, so the promiseTimeout wrapper yields
+					// { error: false, data: undefined }. connectToRandomPeer accepts a peer only
+					// when `data` is truthy, so a genuinely successful connection was thrown away
+					// and the app reported "Unable to connect to an electrum server" on every
+					// network. Hand back the peer we just connected to — which is what the
+					// caller's own contract already promised.
+					connectionResponse = {error: false, data: clients.peer[coin]};
 				}
 			}
 			await pauseExecution();
