@@ -5,7 +5,6 @@ import {
 	AppState,
 	BackHandler,
 	Dimensions,
-	InteractionManager,
 	Keyboard,
 	LayoutAnimation,
 	NativeModules,
@@ -20,6 +19,7 @@ import {
 	ImageBackground,
 	PixelRatio
 } from "react-native";
+import InteractionManager from "../utils/interactionManager";
 
 import { ThemeProvider } from "styled-components/native";
 import { LinearGradient, Text, TextInput } from "../styles/components";
@@ -29,7 +29,7 @@ import RNBootSplash from "react-native-bootsplash";
 import { systemWeights } from "react-native-typography";
 import { MaterialIcons } from "../styles/components";
 
-import TouchID from "react-native-touch-id";
+import TouchID from "../utils/biometrics";
 import "../../shim";
 
 import Header from "./Header";
