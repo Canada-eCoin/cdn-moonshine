@@ -49,6 +49,7 @@ interface HeaderComponent {
 	selectedCurrency: string,
 	onSelectCoinPress: Function,
 	isOnline: boolean,
+	blockHeight: number,
 	exchangeRate: number | string,
 	walletName: string,
 	selectedCryptoStyle: object,
@@ -58,7 +59,7 @@ interface HeaderComponent {
 	cryptoValue: number | string,
 	cryptoUnit: string
 }
-const _Header = ({compress = false, selectedCurrency = "", fiatSymbol = "$", selectedCrypto = "bitcoin", bitcoinRate = 0, onSelectCoinPress = () => null, isOnline = true, exchangeRate = 0, walletName = "", selectedCryptoStyle = {}, activeOpacity = 0.6, fontSize = 60, fiatValue = 0, cryptoValue = 0, cryptoUnit = "satoshi"}: HeaderComponent) => {
+const _Header = ({compress = false, selectedCurrency = "", fiatSymbol = "$", selectedCrypto = "bitcoin", bitcoinRate = 0, onSelectCoinPress = () => null, isOnline = true, blockHeight = 0, exchangeRate = 0, walletName = "", selectedCryptoStyle = {}, activeOpacity = 0.6, fontSize = 60, fiatValue = 0, cryptoValue = 0, cryptoUnit = "satoshi"}: HeaderComponent) => {
 	try {
 		if (isNaN(fiatValue)) fiatValue = 0;
 		if (cryptoValue === 0 && cryptoUnit === "BTC") {
@@ -101,6 +102,17 @@ const _Header = ({compress = false, selectedCurrency = "", fiatSymbol = "$", sel
 
 	const _onSelectCoinPress = () => onSelectCoinPress();
 
+	// offline  : no client at all
+	// connecting: client accepted, no headers yet (height unknown -> NOT connected)
+	// connected: headers received, so the chain is actually advancing
+	const badgeState = isOnline !== true ? "offline" : (blockHeight ? "connected" : "connecting");
+	const badgeColor = { offline: "#e05a4f", connecting: "#e0a83a", connected: "#4caf7d" }[badgeState];
+	const badgeLabel = badgeState === "offline"
+		? "Offline"
+		: badgeState === "connecting"
+			? "Connecting…"
+			: `Connected  ·  ${formatNumber(blockHeight)}`;
+
 	return (
 		<TouchableOpacity style={styles.container} activeOpacity={activeOpacity} onPress={_onSelectCoinPress}>
 			<StatusBar barStyle="light-content" backgroundColor={getCoinData({selectedCrypto}).color} />
@@ -128,9 +140,14 @@ const _Header = ({compress = false, selectedCurrency = "", fiatSymbol = "$", sel
 					}
 				</View> 
 
-			{isOnline !== true &&
-				<Text style={[styles.errorRow, { marginTop: 10, fontSize: fontSize/2.5 }]}>Currently Offline</Text>
-			}
+			{/* Three states, not two. "Connected" is only claimed when a block height is
+			    actually known for this coin — accepting a peer is not the same as syncing,
+			    and a height of 0 means headers have not arrived. Saying "Connected" there
+			    would be the same class of lie as the old silent "Currently Offline". */}
+			<View style={styles.statusRow} testID="connection-badge" accessibilityLabel={badgeLabel}>
+				<View style={[styles.statusDot, { backgroundColor: badgeColor }]} />
+				<Text style={[styles.statusText, { fontSize: fontSize/2.5 }]}>{badgeLabel}</Text>
+			</View>
 		</TouchableOpacity>
 	);
 };
@@ -155,6 +172,23 @@ _Header.propTypes = {
 };
 
 const styles = StyleSheet.create({
+	statusRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		marginTop: 10
+	},
+	statusDot: {
+		width: 6,
+		height: 6,
+		borderRadius: 3,
+		marginRight: 6
+	},
+	statusText: {
+		color: "#ffffff",
+		opacity: 0.85,
+		fontWeight: "600"
+	},
 	container: {
 		backgroundColor: "transparent"
 	},
@@ -218,6 +252,7 @@ const Header = memo(
 			nextProps.fiatValue === prevProps.fiatValue &&
 			nextProps.cryptoValue === prevProps.cryptoValue &&
 			nextProps.isOnline === prevProps.isOnline &&
+			nextProps.blockHeight === prevProps.blockHeight &&
 			nextProps.selectedWallet === prevProps.selectedWallet &&
 			nextProps.selectedCrypto === prevProps.selectedCrypto &&
 			nextProps.cryptoUnit === prevProps.cryptoUnit &&
