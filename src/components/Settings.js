@@ -1,4 +1,5 @@
 import React, { PureComponent } from "react";
+import { notify } from "../utils/notify";
 import {
 	StyleSheet,
 	TouchableOpacity,
@@ -530,7 +531,7 @@ class Settings extends PureComponent {
 				hasAddresses = this.props.wallet.wallets[selectedWallet].addresses[selectedCrypto].length > 0;
 			} catch (e) {}
 			if (this.state.rescanningWallet || !hasAddresses) {
-				alert("Currently generating addresses for signing, one moment please.");
+				notify("Currently generating addresses for signing, one moment please.");
 				return;
 			}
 
@@ -822,7 +823,7 @@ class Settings extends PureComponent {
 			if (result.error && rollbackAttempt === false) {
 				//Roll back and notify user
 				this.updateFiatCurrency(previouslySelectedCurrency, true);
-				setTimeout(() => {alert(`We're having some trouble getting the exchange rate for ${currency.toUpperCase()}. ${capitalize(selectedService)} is either having some technical difficulties or ${currency.toUpperCase()} is no longer supported. Otherwise, please check your connection and try again`);}, 500);}
+				setTimeout(() => {notify(`We're having some trouble getting the exchange rate for ${currency.toUpperCase()}. ${capitalize(selectedService)} is either having some technical difficulties or ${currency.toUpperCase()} is no longer supported. Otherwise, please check your connection and try again`);}, 500);}
 			this.toggleFiatModal({ display: false });
 		} catch {}
 	};

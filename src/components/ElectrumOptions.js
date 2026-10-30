@@ -1,4 +1,5 @@
 import React, { PureComponent } from 'react';
+import { notify } from "../utils/notify";
 import {
 	StyleSheet,
 	Dimensions,
@@ -218,7 +219,7 @@ class ElectrumOptions extends PureComponent {
 			const inputIsValid = await validateInput({ host, port });
 			if (inputIsValid.error) {
 				await this.setState({ loading: "", saving: "" });
-				alert(inputIsValid.data);
+				notify(inputIsValid.data);
 				return;
 			}
 			
@@ -231,12 +232,12 @@ class ElectrumOptions extends PureComponent {
 				//const versionResponse = await electrum.getVersion({ coin });
 				const feeEstimateResponse = await electrum.getFeeEstimate({ coin });
 				if (feeEstimateResponse.error === false) {
-					alert(`Success!!\nSuccessfully connect to:\n${host}:${port}`);
+					notify(`Success!!\nSuccessfully connect to:\n${host}:${port}`);
 				} else {
-					alert(`Failure\nUnable to connect to:\n${host}:${port}`);
+					notify(`Failure\nUnable to connect to:\n${host}:${port}`);
 				}
 			} else {
-				alert(`Failure\nUnable to connect to:\n${host}:${port}`);
+				notify(`Failure\nUnable to connect to:\n${host}:${port}`);
 			}
 			await this.setState({ loading: "" });
 		} catch (e) {
@@ -270,7 +271,7 @@ class ElectrumOptions extends PureComponent {
 			const inputIsValid = await validateInput({ host, port });
 			if (inputIsValid.error) {
 				await this.setState({ loading: "", saving: "" });
-				alert(inputIsValid.data);
+				notify(inputIsValid.data);
 				return;
 			}
 			
@@ -285,12 +286,12 @@ class ElectrumOptions extends PureComponent {
 				if (feeEstimateResponse.error === false) {
 					const currentPeers = this.props.settings.customPeers;
 					await this.props.updateSettings({ customPeers: {...currentPeers, [coin]: [{ host, port, protocol }] }, currentPeer: { host, port, protocol } });
-					alert(`Success!!\nSuccessfully connected to and saved:\n${host}:${port}`);
+					notify(`Success!!\nSuccessfully connected to and saved:\n${host}:${port}`);
 				} else {
-					alert(`Failure\nUnable to connect to:\n${host}:${port}`);
+					notify(`Failure\nUnable to connect to:\n${host}:${port}`);
 				}
 			} else {
-				alert(`Failure\nUnable to connect to:\n${host}:${port}`);
+				notify(`Failure\nUnable to connect to:\n${host}:${port}`);
 			}
 			
 			this.setState({ saving: "" });
