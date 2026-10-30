@@ -142,5 +142,10 @@
     "_stream_duplex": "readable-stream/duplex",
     "_stream_passthrough": "readable-stream/passthrough",
     "stream": "stream-browserify"
+  },
+  "resolutions": {
+    "pbkdf2": "3.1.7",
+    "postcss": "8.5.23",
+    "tmp": "0.2.6"
   }
 }

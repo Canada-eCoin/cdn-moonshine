@@ -20,6 +20,32 @@
 # Version RANGES in package.json bound what can be proposed: `react-native: ^0.78.0`
 # permits 0.78.x only, so no React Native minor/major jump will arrive as a PR. Those
 # stay deliberate, which is the intent.
+#
+# RESOLUTIONS. The other half of that problem: `react-native-crypto` pins `pbkdf2` at
+# exactly 3.0.8 and `styled-components` pins `postcss` at exactly 8.4.49, so no range is
+# available for Dependabot to move and no security PR can be opened for either. Those
+# live in the `resolutions` map in package.json with a comment-free `// why` trail here:
+#
+#   pbkdf2  3.1.7   critical advisory, <= 3.1.2. Reached through the global `crypto`
+#                   shim, i.e. the key/seed path. Same 3.x API.
+#   postcss 8.5.23  8.4.x carries four advisories. Build-time only (styled-components
+#                   babel plugin); 8.5 keeps the 8.4 API.
+#   tmp     0.2.6   patch-package asks for ^0.0.33; 0.2.x keeps the API and until now
+#                   the only thing verifying that is `yarn install` running the patches,
+#                   which is exactly what CI does first.
+#
+# Anything left after that is blocked on a parent, not on us: sharp (pinned by
+# react-native-bootsplash at ^0.32), image-size (metro wants ^1.0.2, the fix is 2.x),
+# uuid 7 (xcode wants ^7.0.3, the fix is 11.x), node-fetch 1 (isomorphic-fetch wants
+# ^1.0.1, the fix is 2.6.7), fast-xml-parser 4 (the RN CLI wants ^4, the fix is 5.7.0),
+# babel-traverse 6 (the babel 6 helper chain; the fix is 7.x, i.e. retiring those
+# plugins), and deepmerge and elliptic, which have no patched release at all. Those need
+# the parent upgraded first; forcing them with `resolutions` would trade a dependency
+# advisory for a broken build.
+#
+# Recorded 2026-10-30: 101 open advisories -> 11 after the sweep above. The number moves
+# on its own — Dependabot re-scanned when the first five PRs landed and added eight more
+# advisories — so recount before quoting this figure.
 
 version: 2
 updates:
@@ -30,9 +56,17 @@ updates:
       day: monday
       time: '13:00'
       timezone: America/Toronto
-    open-pull-requests-limit: 5
+    # Ten, not five. On 2026-10-30 this repo had 100 open advisories and exactly five
+    # pull requests: the limit was the ceiling on how much could be fixed at once, and
+    # every merge of a security PR had to wait for a slot. Raise it before the next
+    # backlog, not after.
+    open-pull-requests-limit: 10
     groups:
       # One PR for a pile of small bumps instead of twenty PRs.
+      #
+      # Groups apply to VERSION updates only. Security updates are always opened
+      # individually — one PR per advisory — which is why a security backlog looks
+      # like a pile of singletons rather than one grouped PR.
       npm-minor-patch:
         patterns:
           - '*'
@@ -49,7 +83,7 @@ updates:
       day: monday
       time: '13:00'
       timezone: America/Toronto
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 5
     commit-message:
       prefix: 'chore(deps)'
 
