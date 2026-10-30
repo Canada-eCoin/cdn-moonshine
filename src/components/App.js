@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import { notify } from "../utils/notify";
 import {
 	View,
 	Animated,
@@ -478,7 +479,7 @@ export default class App extends Component {
 					//Device is offline. Ensure any loading animations are disabled.
 					await Promise.all([this.props.updateUser({ isOnline: isConnected })]);
 					if (this.state.loadingTransactions !== false) this.setState({ loadingTransactions: false });
-					alert("Your device is currently offline. Please check your network connection and try again.");
+					notify("Your device is currently offline. Please check your network connection and try again.");
 					return;
 				}
 			} else {
@@ -512,7 +513,7 @@ export default class App extends Component {
 					//The device is considered offline if it is unable to connect to an electrum server. Ensure any loading animations are disabled.
 					await Promise.all([this.props.updateUser({ isOnline: false })]);
 					if (this.state.loadingTransactions !== false) this.setState({ loadingTransactions: false });
-					alert("Unable to connect to an electrum server at this time. Please check your connection and try again.");
+					notify("Unable to connect to an electrum server at this time. Please check your connection and try again.");
 					return;
 				}
 
@@ -1284,7 +1285,7 @@ export default class App extends Component {
 	onSweep = async (key = "") => {
 		try {
 			if (!key) {
-				alert("No private key detected.");
+				notify("No private key detected.");
 				return;
 			}
 			await this.setState({ privateKey: key });
@@ -1649,7 +1650,7 @@ export default class App extends Component {
 			} catch {}
 			if (!decryptedKey) {
 				await this.setState({ bip38Data: { ...this.state.bip38Data, loading: false } });
-				alert("Invalid key or passphrase.");
+				notify("Invalid key or passphrase.");
 				return;
 			}
 			let privKey = decryptedKey.privateKey;
@@ -1674,7 +1675,7 @@ export default class App extends Component {
 				return;
 			}
 			await this.setState({ bip38Data: { ...this.state.bip38Data, loading: false } });
-			alert("Invalid key or passphrase.");
+			notify("Invalid key or passphrase.");
 		} catch {}
 	}
 
@@ -1701,7 +1702,7 @@ export default class App extends Component {
 			} catch {}
 			if (url === "") {
 				this._closeBitidModal();
-				alert("Invalid URI");
+				notify("Invalid URI");
 				return;
 			}
 			await Promise.all([
@@ -1760,7 +1761,7 @@ export default class App extends Component {
 					//Present user with the option to sign and send the request.
 					const parsedURL = new Url(data);
 					this.setState({ displayBitidModal: true, bitidData: { uri: data, host: parsedURL.hostname } });
-				} catch { alert("Unable to parse Bitid URL."); }
+				} catch { notify("Unable to parse Bitid URL."); }
 				return;
 			}
 
@@ -1769,7 +1770,7 @@ export default class App extends Component {
 			if (qrCodeData.error) {
 				await this.updateItem({ stateId: "displayCamera", opacityId: "cameraOpacity", display: false });
 				await this.resetView();
-				alert(`Unable to parse the following data:\n${data}`);
+				notify(`Unable to parse the following data:\n${data}`);
 				return;
 			}
 			InteractionManager.runAfterInteractions(async () => {

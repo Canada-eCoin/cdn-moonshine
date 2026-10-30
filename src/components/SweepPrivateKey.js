@@ -1,4 +1,5 @@
 import React, { PureComponent } from "react";
+import { notify } from "../utils/notify";
 import {
 	StyleSheet,
 	View,
@@ -6,9 +7,9 @@ import {
 	LayoutAnimation,
 	Dimensions,
 	Platform,
-	InteractionManager,
 	Easing
 } from "react-native";
+import InteractionManager from "../utils/interactionManager";
 import PropTypes from "prop-types";
 import Slider from "@react-native-community/slider";
 import { systemWeights } from "react-native-typography";
@@ -136,7 +137,7 @@ class SendTransaction extends PureComponent {
 			const validatePrivateKeyResults = await validatePrivateKey(this.props.privateKey);
 			if (!validatePrivateKeyResults.isPrivateKey) {
 				this.props.onClose();
-				alert("Invalid Private Key");
+				notify("Invalid Private Key");
 				return;
 			}
 			const network = validatePrivateKeyResults.network;
@@ -145,13 +146,13 @@ class SendTransaction extends PureComponent {
 			//Unknown error occurred
 			if (result.error === true) {
 				await this.props.onClose();
-				alert("Unable to retrieve private key data at this time. Please try again later.");
+				notify("Unable to retrieve private key data at this time. Please try again later.");
 				return;
 			}
 			//No balance detected
 			if (result.data.balance <= 0) {
 				await this.props.onClose();
-				alert("There were no funds detected for this private key.");
+				notify("There were no funds detected for this private key.");
 				return;
 			}
 			if (Platform.OS === "ios") {
@@ -842,7 +843,7 @@ class SendTransaction extends PureComponent {
 			const address = this.props.transaction.address;
 			//Validate Address.
 			if (!validateAddress(address, selectedCrypto).isValid) {
-				alert(`It appears that \n "${address}" \n is not a valid ${capitalize(selectedCrypto)} address. Please attempt to re-enter the address.`);
+				notify(`It appears that \n "${address}" \n is not a valid ${capitalize(selectedCrypto)} address. Please attempt to re-enter the address.`);
 				return;
 			}
 			const wallet = this.props.wallet.wallets[selectedWallet];

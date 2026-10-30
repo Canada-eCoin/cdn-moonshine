@@ -1,11 +1,11 @@
 import React, { useEffect, memo } from "react";
+import { confirm } from "../utils/notify";
 import {
 	View,
 	TouchableOpacity,
 	StyleSheet,
 	Dimensions,
 	ScrollView,
-	Alert,
 	LayoutAnimation,
 	Platform
 } from "react-native";
@@ -99,14 +99,8 @@ const _WalletSliderEntry = ({ walletId = "bitcoin", wallet = { wallets: {}, sele
 		try {
 			const index = wallet.walletOrder.indexOf(walletId);
 			const walletName = getWalletName();
-			Alert.alert(
-				"Delete Wallet",
-				`Are you sure you wish to delete ${walletName}?`,
-				[
-					{ text: "No", onPress: () => {}, style: "cancel" },
-					{ text: "Yes", onPress: () => _delWallet({ walletIndex: index })},
-				]
-			);
+			confirm(`Delete Wallet\n\nAre you sure you wish to delete ${walletName}?`, { confirmText: "Yes", cancelText: "No", destructive: true })
+				.then((confirmed) => { if (confirmed) _delWallet({ walletIndex: index }); });
 		} catch (e) {
 			console.log(e);
 		}
