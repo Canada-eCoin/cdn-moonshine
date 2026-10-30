@@ -27,7 +27,21 @@ const pauseExecution = (duration = 500) => {
 	});
 };
 
-const getFuncName = () => getFuncName.caller.name;
+// `Function.caller` is forbidden in strict mode. ES modules are strict, and RN 0.88's
+// Hermes enforces it, so this threw a TypeError at the top of every method that called
+// it — 32 of them — before their own try/catch could run. The symptom was a wallet that
+// connected and then never synced: each RPC rejected inside a caller that swallows
+// errors. The name is only a diagnostic label, so derive it from the stack instead.
+const getFuncName = () => {
+	try {
+		const stack = (new Error().stack || "").split("\n");
+		const frame = stack[2] || "";
+		const match = frame.match(/at\s+(?:Object\.)?([A-Za-z0-9_$]+)/);
+		return match ? match[1] : "";
+	} catch (e) {
+		return "";
+	}
+};
 
 const getDefaultPeers = (coin, protocol) => {
 	return require("./peers.json")[coin].map(peer => {
@@ -114,6 +128,14 @@ const connectToPeer = ({ port = 50002, host = "", protocol = "ssl", coin = "bitc
 				clients.mainClient[coin] = new ElectrumClient(net, tls, port, host, protocol);
 				connectionResponse = await promiseTimeout(1000, clients.mainClient[coin].connect());
 				if (!connectionResponse.error) {
+					// Electrum protocol: the client should identify itself before anything
+					// else. ElectrumX 1.x tolerates skipping this; ElectrumX 2.x (which the
+					// eGulden servers run) silently ignores later requests until it has seen
+					// server.version — the socket connects, then nothing answers, which looks
+					// like a hang. Send it during the handshake, not on first use.
+					try {
+						await promiseTimeout(2000, clients.mainClient[coin].server_version("moonshine/1.0", "1.4"));
+					} catch (e) {}
 					try {
 						//Clear/Remove Electrum's keep-alive message.
 						clearInterval(electrumKeepAlive);

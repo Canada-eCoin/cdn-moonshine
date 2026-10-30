@@ -2170,6 +2170,7 @@ export default class App extends Component {
 												exchangeRate={this.fiatRate()}
 												bitcoinRate={this.bitcoinRate()}
 												isOnline={this.props.user.isOnline}
+												blockHeight={this.props.wallet.blockHeight[this.props.wallet.selectedCrypto] || 0}
 												onSelectCoinPress={this.onSelectCoinPress}
 												fontSize={normalize(56)}
 											/>
