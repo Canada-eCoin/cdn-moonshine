@@ -42,7 +42,7 @@
     "crypto": "^1.0.1",
     "deprecated-react-native-prop-types": "^5.0.0",
     "events": "^3.3.0",
-    "lottie-react-native": "^7.5.0",
+    "lottie-react-native": "7.2.2",
     "moment": "^2.31.0",
     "net": "^1.0.2",
     "patch-package": "^8.0.0",
