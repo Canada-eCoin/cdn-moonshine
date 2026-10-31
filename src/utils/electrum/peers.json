@@ -1,37 +1,32 @@
 {
   "bitcoin": [
-    {"host": "hodlers.beer", "ssl": 50002, "tcp": 50001},
-    {"host": "de.poiuty.com", "ssl": 50002, "tcp": 50001},
-    {"host": "e2.keff.org", "ssl": 50002, "tcp": 50001},
-    {"host": "f.keff.org", "ssl": 50002, "tcp": 50001},
-    {"host": "electrumx.dev", "ssl": 50002, "tcp": 50001},
-    {"host": "blkhub.net", "ssl": 50002, "tcp": 50001}
+    {"host": "bitcoin.lukechilds.co", "ssl": 50002, "tcp": 50001},
+    {"host": "electrum.blockstream.info", "ssl": 50002, "tcp": 50001},
+    {"host": "electrum.bitaroo.net", "ssl": 50002, "tcp": 50001},
+    {"host": "electrum.emzy.de", "ssl": 50002, "tcp": null},
+    {"host": "e.keff.org", "ssl": 50002, "tcp": null},
+    {"host": "electrumx.dev", "ssl": 50002, "tcp": 50001}
   ],
   "litecoin": [
     {"host": "electrum-ltc.bysh.me", "ssl": 50002, "tcp": 50001},
-    {"host": "electrum.ltc.xurious.com", "ssl": 50002, "tcp": 50001}
+    {"host": "electrum.ltc.xurious.com", "ssl": 50002, "tcp": 50001},
+    {"host": "backup.electrum-ltc.org", "ssl": 443, "tcp": 50001}
   ],
   "canadaecoin": [
-    {"host": "woolloomooloo.ecoincore.com", "ssl": 34333, "tcp": 34332 },
-    {"host": "miami.ecoincore.com", "ssl": 34333, "tcp": 34332 },
-    {"host": "holland.ecoincore.com", "ssl": 34333, "tcp": 34332 },
-    {"host": "tokyo.ecoincore.com", "ssl": 50002, "tcp": 34332 },
-    {"host": "mumbai.ecoincore.com", "ssl": 34333, "tcp": 34332 },
-    {"host": "lenoir.ecoincore.com", "ssl": 34333, "tcp": 34332 }
+    {"host": "toronto.ecoincore.com", "ssl": 34333, "tcp": 34332},
+    {"host": "seattle.ecoincore.com", "ssl": 34333, "tcp": 34332},
+    {"host": "holland.ecoincore.com", "ssl": 34333, "tcp": 34332},
+    {"host": "chicago.ecoincore.com", "ssl": 34333, "tcp": 34332},
+    {"host": "oakland.ecoincore.com", "ssl": 34333, "tcp": 34332}
   ],
   "auroracoin": [
-    {"host": "lenoir.ecoincore.com", "ssl": 12343, "tcp": 12342 },
-    {"host": "electrumx.aur.ewmcx.info", "ssl": 50002, "tcp": 50001 },
-    {"host": "failover.aur.ewmcx.biz", "ssl": 50002, "tcp": 50001 }
+    {"host": "electrum1.valhala.is", "ssl": 50002, "tcp": 50001},
+    {"host": "electrumx.aur.ewmcx.info", "ssl": 50002, "tcp": 50001},
+    {"host": "failover.aur.ewmcx.biz", "ssl": 50002, "tcp": 50001}
   ],
   "egulden": [
-    {"host": "holland.ecoincore.com", "ssl": 11017, "tcp": 11016 },
-    {"host": "lenoir.ecoincore.com", "ssl": 11017, "tcp": 11016 },
-    {"host": "electrum2.egulden.org", "ssl": 50002, "tcp": 50001 }
+    {"host": "electrum1.egulden.org", "ssl": 50002, "tcp": 50001},
+    {"host": "electrum3.egulden.org", "ssl": 50002, "tcp": 50001}
   ],
-  "emark": [
-    {"host": "electrum1.deutsche-emark.com", "ssl": 50002, "tcp": 50001 },
-    {"host": "electrum2.deutsche-emark.com", "ssl": 50002, "tcp": 50001 },
-    {"host": "electrum3.deutsche-emark.com", "ssl": 50002, "tcp": 50001 }
-  ]
+  "emark": []
 }
