@@ -139,10 +139,10 @@ whether it is custodial. Have that answer ready.
 |---|---|---|---|
 | bundle identifier (app target) | **`com.kisswallet`** | `project.pbxproj` | the upstream author's identifier — you cannot publish under it |
 | bundle identifier (project default) | `org.reactjs.native.example.$(PRODUCT_NAME…)` | `project.pbxproj` | the React Native template placeholder |
-| `MARKETING_VERSION` | `0.4.0` | `project.pbxproj` | while Android says `1.0` and `package.json` says `0.7.2` — three sources of truth |
-| `CURRENT_PROJECT_VERSION` | `1` | `project.pbxproj` | must increase for every TestFlight/App Store build |
-| iOS deployment target | `15.1` | `project.pbxproj` | raised from `10.0`/`11.0` in this change, to match React Native 0.78's minimum |
-| new architecture | on | React Native 0.78 default | matches the Android side (`newArchEnabled=true`) |
+| `MARKETING_VERSION` | `0.7.2` | `project.pbxproj` | matches `package.json`, which Android reads at build time; `__tests__/version-test.js` fails if they drift apart |
+| `CURRENT_PROJECT_VERSION` | `702` | `project.pbxproj` | the same `major*10000 + minor*100 + patch` number Android uses as `versionCode`; it must increase for every TestFlight/App Store build |
+| iOS deployment target | `15.1` | `project.pbxproj` | React Native 0.88's minimum (the project was on `10.0`/`11.0` before the upgrade) |
+| new architecture | on | React Native 0.88 default | matches the Android side (`newArchEnabled=true`) |
 | `NSAllowsArbitraryLoads` | `true` | `Info.plist` | App Review requires a justification for this; it is here because of plain-HTTP price/peer endpoints. Expect to answer for it, or narrow it to specific domains. |
 
 Usage descriptions are already present (`NSCameraUsageDescription`,
@@ -156,7 +156,7 @@ case you bisect an iOS problem back to here:
 
 - the Podfile called `use_flipper!` / `flipper_post_install`, removed from React Native
   in 0.73 — `pod install` cannot even parse the old file;
-- `platform :ios, '10.0'` against React Native 0.78's required `15.1`;
+- `platform :ios, '10.0'` against React Native's required `15.1`;
 - `config["reactNativePath"]` (string key) where `use_native_modules!` returns a symbol
   key, so the value was `nil`;
 - no `react_native_post_install`, so the per-pod build-setting patches were never
@@ -168,3 +168,17 @@ case you bisect an iOS problem back to here:
 
 The iOS app had not been built since before the fork. Treat the first successful run as
 the beginning of iOS support, not as a regression check.
+
+## 7. The one pin that exists for a reason
+
+`lottie-react-native` is held at **`^7.5.0`** in `package.json`. Both directions of that
+choice break something, and only one of the two can be fixed off a Mac:
+
+| lottie | Android | iOS `pod install` |
+|---|---|---|
+| `7.5.0` (current) | ✅ | ❌ the committed `Podfile.lock` pins `lottie-ios 4.5.0`; 7.5 needs 4.6.0 |
+| `7.2.2` | ❌ `Unresolved reference 'UNSET'` (Kotlin) | ✅ |
+
+Regenerating `ios/Podfile.lock` requires CocoaPods, which requires macOS. On any Mac:
+`yarn install`, `cd ios && pod update lottie-ios && pod install`, commit the lock, and
+`7.5.0` then works on both sides.

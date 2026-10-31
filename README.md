@@ -56,8 +56,26 @@ If you do not see a feature that you want feel free to create a new issue reques
     - iOS: `react-native run-ios`
     - Android: `react-native run-android`
 
+### Build this repo
+
+Everything for this fork runs through one script, which mirrors what CI does:
+
+```bash
+./commands/build/command.sh verify    # lint + jest + release JS bundle + debug APK
+./commands/build/command.sh android release
+./commands/build/command.sh doctor    # what is installed versus what CI expects
+```
+
+`yarn bundle` is a shortcut for the bundle step in that script and nothing else — there is
+one command line for bundling, not two. Signing is covered in
+[`docs/SIGNING.md`](./docs/SIGNING.md) (Android) and
+[`docs/SIGNING-iOS.md`](./docs/SIGNING-iOS.md) (iOS).
+
 ### Create Your Own Build
 - `git clone https://github.com/coreyphillips/moonshine && cd moonshine && yarn install && yarn bundle`
+
+The steps below are the upstream Moonshine instructions, kept for reference. They build
+the unmodified upstream project, not this fork.
 
 ### Create a Reproducible Build
 This method requires docker to create a reproducible build and takes quite some time. However, it will allow you to verify against the most recently available build on Google Play.
