@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import { notify } from "../utils/notify";
 import {
 	StyleSheet,
 	TouchableOpacity,
@@ -6,12 +7,12 @@ import {
 	LayoutAnimation,
 	Dimensions,
 	Platform,
-	InteractionManager,
 	Keyboard,
 	Easing,
 	BackHandler,
 	PixelRatio
 } from "react-native";
+import InteractionManager from "../utils/interactionManager";
 import PropTypes from "prop-types";
 import Slider from "@react-native-community/slider";
 import { systemWeights } from "react-native-typography";
@@ -153,7 +154,7 @@ class SendTransaction extends Component {
 					if (this.hasEnoughFunds()) {
 						this.updateAmount(this.props.transaction.amount);
 					} else {
-						alert(`It appears that\nyou do not have enough funds\nto cover the requested transaction.`);
+						notify(`It appears that\nyou do not have enough funds\nto cover the requested transaction.`);
 					}
 				}
 			} catch (e) {}
@@ -500,12 +501,12 @@ class SendTransaction extends Component {
 		const clipboardContent = await Clipboard.getString();
 		//Check if clipboard content exists.
 		if (!clipboardContent) {
-			alert("It appears your clipboard is empty. Please attempt to copy the address again.");
+			notify("It appears your clipboard is empty. Please attempt to copy the address again.");
 			return;
 		}
 		//Validate Clipboard content.
 		if (!validateAddress(clipboardContent).isValid) {
-			alert(`Invalid Address. Please attempt to copy the address again.`);
+			notify(`Invalid Address. Please attempt to copy the address again.`);
 			return;
 		}
 
@@ -564,13 +565,13 @@ class SendTransaction extends Component {
 			});
 		} catch (e) {
 			console.log(e);
-			alert("Unable to copy rawTx. Please try again or check your phone's permissions.");
+			notify("Unable to copy rawTx. Please try again or check your phone's permissions.");
 		}
 	};
 
 	validateTransaction = async () => {
 		if (!this.props.transaction.address || !this.props.transaction.amount) {
-			alert("Please make sure you've added both an address and an amount to send.");
+			notify("Please make sure you've added both an address and an amount to send.");
 			return;
 		}
 
@@ -582,14 +583,14 @@ class SendTransaction extends Component {
 		const transactionSize = this.getTransactionByteCount();
 		const totalTransactionCost = amount+(fee*transactionSize);
 		if (totalTransactionCost > balance) {
-			alert(`It appears that\nyou do not have enough funds\nto cover the transaction.`);
+			notify(`It appears that\nyou do not have enough funds\nto cover the transaction.`);
 			return;
 		}
 
 		const address = this.props.transaction.address;
 		//Validate Address.
 		if (!validateAddress(address, selectedCrypto).isValid) {
-			alert(`It appears that \n "${address}" \n is not a valid ${capitalize(selectedCrypto)} address. Please attempt to re-enter the address.`);
+			notify(`It appears that \n "${address}" \n is not a valid ${capitalize(selectedCrypto)} address. Please attempt to re-enter the address.`);
 			return;
 		}
 
@@ -597,7 +598,7 @@ class SendTransaction extends Component {
 		/*const addresses = this.props.wallet.wallets[selectedWallet].addresses[selectedCrypto].map(addr => (addr.address));
 		const changeAddresses = this.props.wallet.wallets[selectedWallet].changeAddresses[selectedCrypto].map(addr => (addr.address));
 		if ( addresses.includes(address) || changeAddresses.includes(address)) {
-			alert(`It appears that you are attempting to send to your own address:\n\n"${address}"\n\nPlease enter an address that is unaffiliated with this wallet and try again.`);
+			notify(`It appears that you are attempting to send to your own address:\n\n"${address}"\n\nPlease enter an address that is unaffiliated with this wallet and try again.`);
 			return;
 		}*/
 
@@ -610,7 +611,7 @@ class SendTransaction extends Component {
 			const address = this.props.transaction.address;
 			//Validate Address.
 			if (!validateAddress(address, selectedCrypto).isValid) {
-				alert(`It appears that \n "${address}" \n is not a valid ${capitalize(selectedCrypto)} address. Please attempt to re-enter the address.`);
+				notify(`It appears that \n "${address}" \n is not a valid ${capitalize(selectedCrypto)} address. Please attempt to re-enter the address.`);
 				return;
 			}
 			const wallet = this.props.wallet.wallets[selectedWallet];

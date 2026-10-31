@@ -306,6 +306,114 @@ cmd_ios() {
 	exit 3
 }
 
+# -------------------------------------------------------------------------- emulator ----
+
+# A headless AVD on this machine, so a change can be exercised on a device without a
+# phone in hand. It complements the phone rather than replacing it: the emulator cannot
+# reproduce real network/TLS behaviour, and the phone cannot cheaply reproduce a cold
+# start (its app state is already warm). Between them they have caught faults neither
+# would catch alone.
+EMULATOR_BIN="$SDK/emulator/emulator"
+ADB_BIN="$SDK/platform-tools/adb"
+AVD_NAME="${MOONSHINE_AVD:-moonshine}"
+EMULATOR_LOG="${TMPDIR:-/tmp}/moonshine-emulator.log"
+
+emu_serial() {
+	# First running emulator, if any.
+	"$ADB_BIN" devices 2>/dev/null | awk '/^emulator-[0-9]+[[:space:]]+device/ {print $1; exit}'
+}
+
+emu_booted() {
+	local s; s="$(emu_serial)"
+	[[ -n "$s" ]] && [[ "$("$ADB_BIN" -s "$s" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == "1" ]]
+}
+
+cmd_emulator() {
+	local sub="${1:-up}"
+	[[ -x "$EMULATOR_BIN" ]] || die "no emulator binary at $EMULATOR_BIN (install the 'emulator' SDK package)"
+
+	case "$sub" in
+		status)
+			bold "Emulator status"
+			if ! "$EMULATOR_BIN" -list-avds 2>/dev/null | grep -qx "$AVD_NAME"; then
+				warn "AVD '$AVD_NAME' does not exist"
+				info "create it with:"
+				info "  sdkmanager 'system-images;android-36;google_apis;x86_64'"
+				info "  avdmanager create avd -n $AVD_NAME -k 'system-images;android-36;google_apis;x86_64'"
+				return 1
+			fi
+			ok "AVD '$AVD_NAME' exists"
+			local s; s="$(emu_serial)"
+			if [[ -z "$s" ]]; then
+				info "not running"
+				return 0
+			fi
+			ok "running as $s"
+			if emu_booted; then
+				ok "boot completed"
+				info "app installed: $("$ADB_BIN" -s "$s" shell pm list packages 2>/dev/null | grep -c com.moonshine) (1 = yes)"
+			else
+				warn "still booting"
+			fi
+			;;
+		start)
+			local s; s="$(emu_serial)"
+			if [[ -n "$s" ]] && emu_booted; then
+				ok "already running as $s"
+				return 0
+			fi
+			"$EMULATOR_BIN" -list-avds 2>/dev/null | grep -qx "$AVD_NAME" \
+				|| die "AVD '$AVD_NAME' does not exist — run '$0 emulator status' for the commands"
+			bold "Starting $AVD_NAME (headless)"
+			# -no-window: no display on a server. swiftshader: software GL, since there is
+			# no GPU to hand. -no-snapshot: always a cold boot, which is the point when the
+			# thing being tested is a cold start.
+			nohup "$EMULATOR_BIN" -avd "$AVD_NAME" -no-window -no-audio -no-boot-anim \
+				-gpu swiftshader_indirect -no-snapshot -memory 4096 \
+				> "$EMULATOR_LOG" 2>&1 &
+			info "log: $EMULATOR_LOG"
+			local i
+			for i in $(seq 1 60); do
+				sleep 2
+				if emu_booted; then ok "booted in $((i * 2))s"; return 0; fi
+			done
+			die "no boot after 120s — see $EMULATOR_LOG"
+			;;
+		stop)
+			local s; s="$(emu_serial)"
+			[[ -n "$s" ]] || { ok "not running"; return 0; }
+			"$ADB_BIN" -s "$s" emu kill >/dev/null 2>&1 || true
+			ok "stopped $s"
+			;;
+		app)
+			local s; s="$(emu_serial)"
+			[[ -n "$s" ]] || die "no emulator running — '$0 emulator start'"
+			emu_booted || die "emulator is not finished booting"
+			local apk="$ANDROID_DIR/app/build/outputs/apk/debug/app-debug.apk"
+			[[ -f "$apk" ]] || die "no debug APK — run '$0 android debug' first"
+			bold "Install + launch on $s"
+			"$ADB_BIN" -s "$s" install -r "$apk" | tail -1
+			# Debug builds load JS from Metro, so the emulator has to see it on 8081.
+			"$ADB_BIN" -s "$s" reverse tcp:8081 tcp:8081
+			if curl -s --max-time 3 http://127.0.0.1:8081/status 2>/dev/null | grep -q running; then
+				ok "Metro reachable on 8081"
+			else
+				warn "Metro is not running — the app will show a red screen until 'yarn start' is up"
+			fi
+			"$ADB_BIN" -s "$s" shell am start -n com.moonshine/.SplashActivity >/dev/null
+			ok "launched com.moonshine"
+			;;
+		up)
+			cmd_emulator start
+			cmd_emulator app
+			;;
+		""|"-h"|"--help"|"help")
+			info "usage: $0 emulator [start|stop|status|app|up]"
+			;;
+		*) die "unknown emulator subcommand '$sub' (start|stop|status|app|up)" ;;
+	esac
+}
+
 # ------------------------------------------------------------------------------- all ----
 
 # Metro's file crawler shells out to `find` — it logs "Using system find: true" — and on
@@ -386,6 +494,7 @@ $(bold "subcommands")
   ios-deps            why pod resolution cannot be checked locally (CocoaPods is macOS-only)
   ios                 why this cannot be local; --dispatch to run it on GitHub
   bundle              release JS bundle (Metro) — the step a release APK needs
+  emulator [cmd]      headless AVD: start | stop | status | app | up (start+install+launch)
   verify              js + bundle + android debug — the "is this branch sane" command
   all                 js + bundle + android debug
 
@@ -402,6 +511,7 @@ case "${1:-}" in
 	js)        cmd_js ;;
 	android)   shift; cmd_android "$@" ;;
 	bundle)    cmd_bundle ;;
+	emulator)  shift; cmd_emulator "$@" ;;
 	ios-deps)  cmd_ios_deps ;;
 	ios)       shift; cmd_ios "$@" ;;
 	verify)    cmd_js; cmd_bundle; cmd_android debug ;;

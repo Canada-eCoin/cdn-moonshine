@@ -10,6 +10,7 @@ Ducks: Redux Reducer Bundles -> https://github.com/erikras/ducks-modular-redux
 
 import React from "react";
 import App from "./src/components/App";
+import NotifyHost from "./src/components/NotifyHost";
 
 // the local storage we'll be using to persist data
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -74,6 +75,7 @@ const Root = () => {
 				persistor={persistor}
 			>
 				<App />
+				<NotifyHost />
 			</PersistGate>
 		</Provider>
 	);
