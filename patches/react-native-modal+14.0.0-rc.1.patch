@@ -1,0 +1,16 @@
+diff --git a/node_modules/react-native-modal/dist/modal.js b/node_modules/react-native-modal/dist/modal.js
+index 74edee4..f875393 100644
+--- a/node_modules/react-native-modal/dist/modal.js
++++ b/node_modules/react-native-modal/dist/modal.js
+@@ -1,5 +1,10 @@
+ import * as React from 'react';
+-import { Animated, DeviceEventEmitter, Dimensions, InteractionManager, KeyboardAvoidingView, Modal, PanResponder, Platform, TouchableWithoutFeedback, View, } from 'react-native';
++import { Animated, DeviceEventEmitter, Dimensions, KeyboardAvoidingView, Modal, PanResponder, Platform, TouchableWithoutFeedback, View, } from 'react-native';
++
++// InteractionManager was removed from React Native core in 0.88 — accessing it throws.
++// This modal only used it to defer work until animations settled, which a handle counter
++// stands in for. Patched locally (patches/), see the note in the commit that added it.
++const InteractionManager = { createInteractionHandle: () => 1, clearInteractionHandle: () => { } };
+ import * as animatable from 'react-native-animatable';
+ import { buildAnimations, initializeAnimations, reversePercentage, } from './utils';
+ import styles from './modal.style';
