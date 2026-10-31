@@ -146,14 +146,14 @@ opinions, and the first two will get a submission rejected outright.
 | item | current value | source | consequence |
 |---|---|---|---|
 | `applicationId` | `com.moonshine` | `android/app/build.gradle` | This is the upstream Moonshine project's package name. You cannot publish under someone else's application ID. Change it (and `namespace`) to your own, e.g. `ca.canadaecoin.wallet`. Changing `applicationId` makes it a *different* app — it will not upgrade an installed `com.moonshine`. |
-| `versionCode` | `1` | `android/app/build.gradle` | Hardcoded. Play rejects a second upload with the same `versionCode`. It must increase for every published build. |
-| `versionName` | `1.0` | `android/app/build.gradle` | Hardcoded, while `package.json` says `0.7.2`. Two sources of truth; the APK shows `1.0`. |
+| `versionCode` | derived: `major*10000 + minor*100 + patch` (`702`) | `android/app/build.gradle` | Read from `package.json`, so it rises with the version. Play rejects a repeat upload of the same `versionCode`, so the version must be bumped — never this number by hand. |
+| `versionName` | `package.json` → `0.7.2` | `android/app/build.gradle` | Read at build time. `package.json` is the one source of truth; the APK cannot disagree with it. |
 | `minSdkVersion` | `24` | `android/build.gradle` | Android 7.0+. |
-| `targetSdkVersion` | `35` | `android/build.gradle` | Current Play requirement as of writing. |
+| `targetSdkVersion` | `36` | `android/build.gradle` | Play requirement as of writing; `compileSdk` and build-tools are `37`, AGP/Gradle `9.4.1`, Kotlin `2.2`. |
 | new architecture | `newArchEnabled=true` | `android/gradle.properties` | Hermes + Fabric. Keep in mind when debugging native crashes. |
 
-Wiring `versionCode`/`versionName` from `package.json` is a small, worthwhile follow-up;
-it is deliberately not part of the CI change that produced this document.
+`versionCode` and `versionName` now come from `package.json` at build time, and
+`__tests__/version-test.js` fails if the Android or iOS side drifts from it.
 
 ## 6. Publishing channels
 
