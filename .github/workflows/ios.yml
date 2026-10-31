@@ -355,8 +355,19 @@ jobs:
           kill "$LAUNCHER" 2>/dev/null || true
 
           if [ "$PROBLEMS" -ne 0 ]; then
-            echo '--- console log (last 60 lines) ---'
-            tail -60 "$LOG" || true
+            echo '--- console log (whole file) ---'
+            cat "$LOG" || true
+            # The console stream is often empty when the app dies before JS starts, and the
+            # runner usually has no .ips report. The simulator's unified log is where the
+            # reason actually is: dyld failures, missing frameworks, NSException, codesign.
+            echo '--- simulator unified log, last 3 minutes, app process ---'
+            PROCESS="$(basename "$APP" .app)"
+            xcrun simctl spawn "$UDID" log show --last 3m --style compact \
+              --predicate "process == \"$PROCESS\"" 2>/dev/null | tail -50 || true
+            echo '--- is the app installed where we think it is? ---'
+            xcrun simctl get_app_container "$UDID" "$BUNDLE_ID" 2>&1 || true
+            echo '--- services matching the bundle id ---'
+            xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep -i "$BUNDLE_ID" || echo '(not listed)'
             echo '--- recent simulator crash reports ---'
             ls -t "$HOME/Library/Logs/DiagnosticReports"/*.ips 2>/dev/null | head -3 || echo '(none)'
             exit 1
