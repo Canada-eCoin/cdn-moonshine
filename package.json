@@ -20,7 +20,7 @@
     "lint": "eslint .",
     "clean": "rm -rf ./android/app/build && rm -rf ./node_modules",
     "postinstall": "rn-nodeify --install buffer,events,process,stream,inherits,assert,crypto --hack; patch-package",
-    "bundle": "cd android && ./gradlew clean && cd ../ && react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.jsbundle --assets-dest android/app/build/intermediates/res/merged/release/ && cd android && ./gradlew assembleRelease --no-daemon"
+    "bundle": "./commands/build/command.sh bundle"
   },
   "dependencies": {
     "@babel/preset-react": "^7.26.3",

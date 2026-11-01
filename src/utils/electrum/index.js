@@ -27,22 +27,15 @@ const pauseExecution = (duration = 500) => {
 	});
 };
 
-// `Function.caller` is forbidden in strict mode. ES modules are strict, and RN 0.88's
-// Hermes enforces it, so this threw a TypeError at the top of every method that called
-// it — 32 of them — before their own try/catch could run. The symptom was a wallet that
-// connected and then never synced: each RPC rejected inside a caller that swallows
-// errors. The name is only a diagnostic label, so derive it from the stack instead.
-const getFuncName = () => {
-	try {
-		const stack = (new Error().stack || "").split("\n");
-		const frame = stack[2] || "";
-		const match = frame.match(/at\s+(?:Object\.)?([A-Za-z0-9_$]+)/);
-		return match ? match[1] : "";
-	} catch (e) {
-		return "";
-	}
-};
-
+// `Function.caller` is forbidden in strict mode, and ES modules are strict, so reading it
+// threw a TypeError at the top of every method that used it — before the method's own
+// try/catch could run. The symptom was a wallet that connected and then never synced.
+//
+// Each RPC now names itself with a literal. Reading the name off the stack was tried
+// first and is wrong in practice: under Babel the caller's frame is rendered with the
+// *callee's* name, so every response came back labelled "getFuncName". A literal is
+// deterministic, greppable, and `__tests__/electrum-test.js` asserts it matches the
+// function it labels.
 const getDefaultPeers = (coin, protocol) => {
 	return require("./peers.json")[coin].map(peer => {
 		try {
@@ -341,12 +334,14 @@ const disconnectFromPeer = async ({ id = Math.random(), coin = "" } = {}) => {
 };
 
 const getAddressBalance = ({ address = "", id = Math.random(), coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "getAddressBalance";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
 			const response = await promiseTimeout(getTimeout(), clients.mainClient[coin].blockchainAddress_getBalance(address));
-			return { id, method, coin, ...response };
+			// Returning from the executor settles nothing — the promise the caller holds would
+			// never resolve. Only resolve() counts.
+			resolve({ id, method, coin, ...response });
 		} catch (e) {
 			console.log(e);
 			resolve({ error: true, method, data: e, coin });
@@ -366,7 +361,7 @@ const getAddressScriptHash = ({ address = "", coin = "" } = {}) => {
 };
 
 const getAddressScriptHashBalance = ({ scriptHash = "", id = Math.random(), coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "getAddressScriptHashBalance";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
@@ -374,13 +369,13 @@ const getAddressScriptHashBalance = ({ scriptHash = "", id = Math.random(), coin
 			resolve({ id, error, method, data, scriptHash, coin });
 		} catch (e) {
 			console.log(e);
-			return { id, error: true, method, data: e, coin };
+			resolve({ id, error: true, method, data: e, coin });
 		}
 	});
 };
 
 const getAddressScriptHashesBalance = ({ addresses = [], id = Math.random(), coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "getAddressScriptHashesBalance";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
@@ -395,7 +390,7 @@ const getAddressScriptHashesBalance = ({ addresses = [], id = Math.random(), coi
 };
 
 const getAddressScriptHashHistory = async ({ scriptHash = "", id = Math.random(), coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "getAddressScriptHashHistory";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
@@ -409,7 +404,7 @@ const getAddressScriptHashHistory = async ({ scriptHash = "", id = Math.random()
 };
 
 const getAddressScriptHashesHistory = ({ addresses = [], id = Math.random(), coin = ""} = {}) => {
-	const method = getFuncName();
+	const method = "getAddressScriptHashesHistory";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
@@ -424,7 +419,7 @@ const getAddressScriptHashesHistory = ({ addresses = [], id = Math.random(), coi
 };
 
 const listUnspentAddressScriptHash = ({ scriptHash = "", id = Math.random(), coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "listUnspentAddressScriptHash";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
@@ -438,7 +433,7 @@ const listUnspentAddressScriptHash = ({ scriptHash = "", id = Math.random(), coi
 };
 
 const listUnspentAddressScriptHashes = ({ addresses = [], id = Math.random(), coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "listUnspentAddressScriptHashes";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
@@ -453,7 +448,7 @@ const listUnspentAddressScriptHashes = ({ addresses = [], id = Math.random(), co
 };
 
 const getAddressScriptHashMempool = ({ scriptHash = "", id = Math.random(), coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "getAddressScriptHashMempool";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
@@ -467,7 +462,7 @@ const getAddressScriptHashMempool = ({ scriptHash = "", id = Math.random(), coin
 };
 
 const getAddressScriptHashesMempool = ({ addresses = [], id = Math.random(), coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "getAddressScriptHashesMempool";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
@@ -482,7 +477,7 @@ const getAddressScriptHashesMempool = ({ addresses = [], id = Math.random(), coi
 };
 
 const getMempool = ({ address = "", id = Math.random(), coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "getMempool";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
@@ -496,7 +491,7 @@ const getMempool = ({ address = "", id = Math.random(), coin = "" } = {}) => {
 };
 
 const listUnspentAddress = ({ address = "", id = Math.random(), coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "listUnspentAddress";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
@@ -510,7 +505,7 @@ const listUnspentAddress = ({ address = "", id = Math.random(), coin = "" } = {}
 };
 
 const getFeeEstimate = ({ blocksWillingToWait = 8, id = Math.random(), coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "getFeeEstimate";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
@@ -524,7 +519,7 @@ const getFeeEstimate = ({ blocksWillingToWait = 8, id = Math.random(), coin = ""
 };
 
 const getAddressHistory = ({ address = "", id = Math.random(), coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "getAddressHistory";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
@@ -538,7 +533,7 @@ const getAddressHistory = ({ address = "", id = Math.random(), coin = "" } = {})
 };
 
 const getTransactionHex = ({ txId = "", id = Math.random(), coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "getTransactionHex";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
@@ -552,7 +547,7 @@ const getTransactionHex = ({ txId = "", id = Math.random(), coin = "" } = {}) =>
 };
 
 const getDonationAddress = ({ id = Math.random(), coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "getDonationAddress";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
@@ -566,7 +561,7 @@ const getDonationAddress = ({ id = Math.random(), coin = "" } = {}) => {
 };
 
 const getPeers = ({ id = Math.random(), coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "getPeers";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
@@ -580,7 +575,7 @@ const getPeers = ({ id = Math.random(), coin = "" } = {}) => {
 };
 
 const getAvailablePeers = ({ id = Math.random(), coin, protocol = "ssl" } = {}) => {
-	const method = getFuncName();
+	const method = "getAvailablePeers";
 	return new Promise(async (resolve) => {
 		try {
 			//Additional Peers can be located here for reference:
@@ -595,7 +590,7 @@ const getAvailablePeers = ({ id = Math.random(), coin, protocol = "ssl" } = {}) 
 };
 
 const getVersion = ({ id = Math.random(), v1 = "3.2.3", v2 = "1.4", coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "getVersion";
 	return new Promise(async (resolve) => {
 		let peerData = "";
 		if (clients.mainClient[coin] === false) peerData = await connectToRandomPeer(coin, clients.peers[coin]);
@@ -612,7 +607,7 @@ const getVersion = ({ id = Math.random(), v1 = "3.2.3", v2 = "1.4", coin = "" } 
 };
 
 const getNewBlockHeightSubscribe = ({ id = Math.random(), coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "getNewBlockHeightSubscribe";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
@@ -627,7 +622,7 @@ const getNewBlockHeightSubscribe = ({ id = Math.random(), coin = "" } = {}) => {
 
 //Returns current block height
 const getNewBlockHeadersSubscribe = ({ id = Math.random(), coin = "", updateBlockHeight = () => null } = {}) => {
-	const method = getFuncName();
+	const method = "getNewBlockHeadersSubscribe";
 	return new Promise(async (resolve) => {
 		try {
 			//if (coin !== coin) await clients.mainClient[coin].connect();
@@ -654,7 +649,7 @@ const getNewBlockHeadersSubscribe = ({ id = Math.random(), coin = "", updateBloc
 };
 
 const getTransactionMerkle = ({ id = Math.random(), txHash = "", height = "", coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "getTransactionMerkle";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
@@ -668,7 +663,7 @@ const getTransactionMerkle = ({ id = Math.random(), txHash = "", height = "", co
 };
 
 const getTransaction = ({ id = Math.random(), txHash = "", coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "getTransaction";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
@@ -682,7 +677,7 @@ const getTransaction = ({ id = Math.random(), txHash = "", coin = "" } = {}) => 
 };
 
 const getTransactions = ({ id = Math.random(), txHashes = [], coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "getTransactions";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
@@ -698,7 +693,7 @@ const getTransactions = ({ id = Math.random(), txHashes = [], coin = "" } = {}) 
 
 
 const getAddressUtxo = ({ id = Math.random(), txHash = "", index = "", coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "getAddressUtxo";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
@@ -712,7 +707,7 @@ const getAddressUtxo = ({ id = Math.random(), txHash = "", index = "", coin = ""
 };
 
 const broadcastTransaction = ({ id = Math.random(), rawTx = "", coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "broadcastTransaction";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
@@ -726,7 +721,7 @@ const broadcastTransaction = ({ id = Math.random(), rawTx = "", coin = "" } = {}
 };
 
 const getBlockChunk = ({ id = Math.random(), index = "", coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "getBlockChunk";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
@@ -740,7 +735,7 @@ const getBlockChunk = ({ id = Math.random(), index = "", coin = "" } = {}) => {
 };
 
 const getBlockHeader = ({ id = Math.random(), height = "", coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "getBlockHeader";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
@@ -754,12 +749,13 @@ const getBlockHeader = ({ id = Math.random(), height = "", coin = "" } = {}) => 
 };
 
 const getHeader = ({ id = Math.random(), height = "", coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "getHeader";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
 			const { error, data } = await promiseTimeout(getTimeout(), clients.mainClient[coin].blockchainBlock_getBlockHeader(height));
-			return { id, error, method, data, coin };
+			// Returning from the executor settles nothing; see getAddressBalance.
+			resolve({ id, error, method, data, coin });
 		} catch (e) {
 			console.log(e);
 			resolve({ id, error: true, method, data: e, coin });
@@ -768,7 +764,7 @@ const getHeader = ({ id = Math.random(), height = "", coin = "" } = {}) => {
 };
 
 const getBanner = ({ id = Math.random(), coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "getBanner";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
@@ -782,7 +778,7 @@ const getBanner = ({ id = Math.random(), coin = "" } = {}) => {
 };
 
 const pingServer = ({ id = Math.random() } = {}) => {
-	const method = getFuncName();
+	const method = "pingServer";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[clients.coin] === false) await connectToRandomPeer(clients.coin, clients.peers[clients.coin]);
@@ -795,7 +791,7 @@ const pingServer = ({ id = Math.random() } = {}) => {
 };
 
 const getAddressProof = ({ address = "", id = Math.random(), coin = "" } = {}) => {
-	const method = getFuncName();
+	const method = "getAddressProof";
 	return new Promise(async (resolve) => {
 		try {
 			if (clients.mainClient[coin] === false) await connectToRandomPeer(coin, clients.peers[coin]);
