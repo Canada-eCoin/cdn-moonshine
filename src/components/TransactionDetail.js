@@ -1,10 +1,10 @@
 import React, { PureComponent } from "react";
+import { notify, confirm } from "../utils/notify";
 import {
 	StyleSheet,
-	TouchableOpacity,
-	InteractionManager,
-	Alert
+	TouchableOpacity
 } from "react-native";
+import InteractionManager from "../utils/interactionManager";
 import { systemWeights } from "react-native-typography";
 import bitcoinUnits from "bitcoin-units";
 import Button from "./Button";
@@ -432,18 +432,8 @@ class TransactionDetail extends PureComponent {
 	cancelTransaction = async (address = ""): void => {
 		try {
 			if (!address) return;
-			Alert.alert(
-				"Cancel Transaction",
-				`Are you sure you wish to cancel this transaction? This action can be seen as malicious by the original recipient of this transaction.`,
-				[
-					{
-						text: "No",
-						onPress: () => {},
-						style: "cancel",
-					},
-					{text: "Yes", onPress: () => this.attemptRbf(address)},
-				]
-			);
+			confirm(`Cancel Transaction\n\nAre you sure you wish to cancel this transaction? This action can be seen as malicious by the original recipient of this transaction.`, { confirmText: "Yes", cancelText: "No", destructive: true })
+				.then((confirmed) => { if (confirmed) this.attemptRbf(address); });
 		} catch (e) {}
 	};
 	
@@ -481,7 +471,7 @@ class TransactionDetail extends PureComponent {
 					this.props.refreshWallet();
 					setTimeout(() => {
 						InteractionManager.runAfterInteractions(() => {
-							alert("There was an error sending your transaction. It is possible that this transaction may have already confirmed. Please refresh your transaction list and try again.");
+							notify("There was an error sending your transaction. It is possible that this transaction may have already confirmed. Please refresh your transaction list and try again.");
 						});
 					},1000);
 				} else {
