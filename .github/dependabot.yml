@@ -21,33 +21,28 @@
 # permits 0.78.x only, so no React Native minor/major jump will arrive as a PR. Those
 # stay deliberate, which is the intent.
 #
-# RESOLUTIONS. The other half of that problem: `react-native-crypto` pins `pbkdf2` at
-# exactly 3.0.8 and `styled-components` pins `postcss` at exactly 8.4.49, so no range is
-# available for Dependabot to move and no security PR can be opened for either. Those
-# live in the `resolutions` map in package.json with a comment-free `// why` trail here:
+# RESOLUTIONS. Where a parent pins a package below its fixed version, no range is
+# available for Dependabot to move and no security PR can be opened. One entry remains,
+# with its reason here because package.json cannot carry comments:
 #
-#   pbkdf2  3.1.7   critical advisory, <= 3.1.2. Reached through the global `crypto`
-#                   shim, i.e. the key/seed path. Same 3.x API.
-#   postcss 8.5.23  8.4.x carries four advisories. Build-time only (styled-components
-#                   babel plugin); 8.5 keeps the 8.4 API.
-#   tmp     0.2.6   patch-package asks for ^0.0.33; 0.2.x keeps the API and until now
-#                   the only thing verifying that is `yarn install` running the patches,
-#                   which is exactly what CI does first.
+#   node-fetch  2.6.7   reached only through react-native-snap-carousel -> fbjs ->
+#                       isomorphic-fetch, whose own range is ^1.0.1. Upstream fix is
+#                       2.6.7; 3.x is ESM-only and would break the CJS caller.
 #
-# Anything left after that is blocked on a parent, not on us: sharp (pinned by
-# react-native-bootsplash at ^0.32 — bootsplash 7 needs RN 0.80+), image-size (metro
-# wants ^1.0.2, the fix is 2.x), uuid 7 (xcode wants ^7.0.3, the fix is 11.x),
-# node-fetch 1 (isomorphic-fetch wants ^1.0.1, the fix is 2.6.7), fast-xml-parser 4
-# (the RN CLI wants ^4, the fix is 5.7.0), and deepmerge and elliptic, which have no
-# patched release at all. Those need the parent upgraded first; forcing them with
-# `resolutions` would trade a dependency advisory for a broken build. Every one of the
-# first four is unlocked by the React Native upgrade, which is where they should land.
+# This map is now short on purpose. After the React Native 0.88 upgrade the parents that
+# used to pin things (react-native-crypto/pbkdf2, styled-components/postcss,
+# patch-package/tmp) moved to ranges that already include the fixes, so those pins were
+# removed rather than left as folklore — the lockfile resolves them because the parents
+# allow it, which is the state to prefer.
 #
-# PINNED DIRECT DEPS. `react-native-svg` is pinned to 15.12.0 in package.json, not a
-# range: 15.16 calls `codegenNativeComponent` from the react-native root export, and
-# RN 0.79 does not export it there (it is only an internal path), so 15.16 breaks jest
-# and would break the app. Move it with the RN upgrade, not before.
+# What is left is not fixable by us at all: `deepmerge` 4.3.1 and `elliptic` 6.6.1 have
+# no patched release published. Everything else — sharp, image-size, uuid 7,
+# fast-xml-parser 4, and the rest of that list — was cleared by moving React Native to
+# 0.88.1 and the libraries that ride it (bootsplash 7, metro 0.87, RN CLI 20,
+# image-size 2, sharp 0.35).
 #
+# Recorded 2026-10-30: 101 open advisories -> 2 low, both with no fix upstream. That is
+# the floor; new advisories will still arrive and should still be triaged.
 # Recorded 2026-10-30: 101 open advisories -> 10 (the babel 6 tree removed here took
 # the last critical). The number moves on its own — Dependabot re-scanned when the
 # first five PRs landed and added eight more — so recount before quoting this figure.
